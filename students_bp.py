@@ -8,7 +8,6 @@ from utils.auth import requires_roles
 from flask import Response
 from utils.pdf_reports import generate_gradebook_pdf
 from werkzeug.utils import secure_filename
-import os
 from scripts.import_export import (
     import_students_csv,
     import_subjects_csv,
@@ -20,8 +19,8 @@ from scripts.import_export import (
 )
 from models import User
 
-from models import Attendance, AttendanceStatus, calculate_attendance_percentage
-from marshmallow import Schema, fields, ValidationError
+from models import Attendance
+from marshmallow import Schema, fields
 import inspect
 from datetime import datetime, date
 from werkzeug.security import generate_password_hash
@@ -893,8 +892,6 @@ def import_csv():
         flash('Fichero requerido.', 'warning')
         return redirect(url_for('students_bp.list_students'))
     typ = request.form.get('type', 'students')
-    # basic filename check
-    filename = secure_filename(f.filename)
     try:
         if typ == 'students':
             count = import_students_csv(f.stream)
@@ -1025,66 +1022,6 @@ class AttendanceSchema(Schema):
     recorded_by = fields.Int(dump_only=True)
 
 
-@students_bp.route('/attendance/bulk', methods=['POST'])
-@login_required
-@requires_roles(UserRole.TEACHER, UserRole.ADMIN)
-def attendance_bulk():
-    payload = request.get_json() or {}
-    subject_id = payload.get('subject_id')
-    rec_date = payload.get('date')
-    records = payload.get('records')
-    if not subject_id or not records:
-        return ({'error': 'subject_id and records are required'}, 400)
-    subj = db.session.get(Subject, subject_id)
-    if subj is None:
-        return ({'error': 'subject not found'}, 404)
-    # permission: only teacher of subject or admin
-    if current_user.role != UserRole.ADMIN and subj.teacher_id and subj.teacher_id != current_user.id:
-        return ({'error': 'forbidden: not teacher of this subject'}, 403)
-    # parse date
-    if rec_date:
-        try:
-            rec_date_obj = datetime.strptime(rec_date, '%Y-%m-%d').date()
-        except Exception:
-            return ({'error': 'invalid date format, expected YYYY-MM-DD'}, 400)
-    else:
-        rec_date_obj = date.today()
-    # validate records and collect student_ids
-    student_ids = []
-    items = []
-    for r in records:
-        try:
-            data = AttendanceSchema().load({**r, 'subject_id': subject_id, 'date': rec_date_obj})
-        except ValidationError as ve:
-            return ({'error': 'validation error', 'details': ve.messages}, 400)
-        status_str = data.get('status')
-        try:
-            status_enum = AttendanceStatus[status_str]
-        except Exception:
-            return ({'error': f'invalid status: {status_str}'}, 400)
-        student_ids.append(data['student_id'])
-        items.append({'student_id': data['student_id'], 'status': status_enum, 'remarks': data.get('remarks')})
-    # check duplicates
-    existing = (
-        Attendance.query.filter(Attendance.subject_id == subject_id, Attendance.date == rec_date_obj, Attendance.student_id.in_(student_ids)).all()
-    )
-    if existing:
-        dup_ids = [e.student_id for e in existing]
-        return ({'error': 'duplicates for student_ids', 'student_ids': dup_ids}, 400)
-    # insert in transaction
-    try:
-        with db.session.begin():
-            created = []
-            for it in items:
-                a = Attendance(student_id=it['student_id'], subject_id=subject_id, date=rec_date_obj, status=it['status'], remarks=it.get('remarks'), recorded_by=current_user.id)
-                db.session.add(a)
-                created.append(a)
-        return ({'status': 'ok', 'created': len(created)}, 201)
-    except Exception as e:
-        db.session.rollback()
-        return ({'error': str(e)}, 500)
-
-
 @students_bp.route('/attendance/student/<int:student_id>')
 @login_required
 def attendance_student(student_id):
@@ -1097,23 +1034,3 @@ def attendance_student(student_id):
     return {'student_id': student_id, 'attendance': out}
 
 
-@students_bp.route('/attendance/<int:attendance_id>/justify', methods=['PATCH'])
-@login_required
-@requires_roles(UserRole.SUPER_ADMIN)
-def justify_attendance(attendance_id):
-    a = db.session.get(Attendance, attendance_id)
-    if a is None:
-        abort(404)
-    if a.status != AttendanceStatus.ABSENT:
-        return ({'error': 'only ABSENT records can be justified'}, 400)
-    payload = request.get_json() or {}
-    note = payload.get('note')
-    a.status = AttendanceStatus.EXCUSED
-    if note:
-        a.remarks = (a.remarks or '') + '\nJustified: ' + note
-    try:
-        db.session.commit()
-        return ({'status': 'ok', 'attendance_id': a.id}, 200)
-    except Exception as e:
-        db.session.rollback()
-        return ({'error': str(e)}, 500)
