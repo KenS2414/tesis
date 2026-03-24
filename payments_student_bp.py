@@ -33,7 +33,7 @@ def _is_admin_user():
 
 @payments_student_bp.route("/payments")
 @login_required
-@requires_roles(UserRole.ADMIN, UserRole.STUDENT)
+@requires_roles(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.STUDENT)
 def payments_list():
     if _is_admin_user():
         return redirect(url_for("payments_admin_bp.admin_payments"))

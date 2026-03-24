@@ -2,7 +2,7 @@ import pytest
 from werkzeug.security import generate_password_hash
 
 
-def test_admin_can_change_role(auth_client, app):
+def test_admin_can_change_role(super_admin_client, app):
     from extensions import db
     from models import User
 
@@ -11,7 +11,7 @@ def test_admin_can_change_role(auth_client, app):
     db.session.add(u)
     db.session.commit()
 
-    client = auth_client
+    client = super_admin_client
     resp = client.post(f"/students/users/{u.id}/role", data={"role": "teacher"}, follow_redirects=True)
     assert resp.status_code in (200, 302)
 

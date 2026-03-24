@@ -56,6 +56,9 @@ class Student(db.Model):
     email = db.Column(db.String(200), unique=False, nullable=True)
     current_year_group = db.Column(db.String(100), nullable=True)
     dob = db.Column(db.Date, nullable=True)
+    cedula = db.Column(db.String(8), nullable=True)
+    section = db.Column(db.String(1), nullable=True)
+    photo_filename = db.Column(db.String(300), nullable=True)
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
 
     def __repr__(self):

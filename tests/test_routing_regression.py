@@ -13,20 +13,20 @@ def test_dashboard_requires_authentication(client):
     assert "/login" in (resp.headers.get("Location") or "")
 
 
-def test_login_redirects_authenticated_user(admin_client):
-    resp = admin_client.get("/login", follow_redirects=False)
+def test_login_redirects_authenticated_user(super_admin_client):
+    resp = super_admin_client.get("/login", follow_redirects=False)
     assert resp.status_code == 302
     assert "/dashboard" in (resp.headers.get("Location") or "")
 
 
-def test_students_canonical_redirect(admin_client):
-    resp = admin_client.get("/students", follow_redirects=False)
+def test_students_canonical_redirect(super_admin_client):
+    resp = super_admin_client.get("/students", follow_redirects=False)
     assert resp.status_code in (301, 302, 307, 308)
     assert "/students/" in (resp.headers.get("Location") or "")
 
 
-def test_students_list_available_in_blueprint(admin_client):
-    resp = admin_client.get("/students/", follow_redirects=False)
+def test_students_list_available_in_blueprint(super_admin_client):
+    resp = super_admin_client.get("/students/", follow_redirects=False)
     assert resp.status_code == 200
 
 
@@ -36,8 +36,8 @@ def test_admin_payments_forbidden_for_teacher(teacher_client):
     assert "/dashboard" in (resp.headers.get("Location") or "")
 
 
-def test_admin_user_redirected_from_payments_to_admin_panel(admin_client):
-    resp = admin_client.get("/payments", follow_redirects=False)
+def test_admin_user_redirected_from_payments_to_admin_panel(super_admin_client):
+    resp = super_admin_client.get("/payments", follow_redirects=False)
     assert resp.status_code == 302
     assert "/admin/payments" in (resp.headers.get("Location") or "")
 

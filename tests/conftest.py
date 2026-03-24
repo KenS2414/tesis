@@ -112,12 +112,32 @@ def sample_students(app):
 
 
 @pytest.fixture
-def auth_client(client, admin_user):
+def super_admin_client(client, admin_user):
     # helper: logs in as admin and returns a test client with session
     resp = client.post("/login", data={"username": "admin", "password": "adminpass"}, follow_redirects=True)
     assert resp.status_code in (200, 302)
     return client
 
+
+@pytest.fixture
+def super_admin_user(app):
+    from models import UserRole
+    u = User.query.filter_by(username="superadmin").first()
+    if u:
+        u.password_hash = generate_password_hash("superadminpass")
+        u.role = UserRole.SUPER_ADMIN
+        db.session.commit()
+        return u
+    u = User(username="superadmin", password_hash=generate_password_hash("superadminpass"), role=UserRole.SUPER_ADMIN)
+    db.session.add(u)
+    db.session.commit()
+    return u
+
+@pytest.fixture
+def super_admin_client(client, super_admin_user):
+    resp = client.post("/login", data={"username": "superadmin", "password": "superadminpass"}, follow_redirects=True)
+    assert resp.status_code in (200, 302)
+    return client
 
 @pytest.fixture
 def admin_client(client, admin_user):

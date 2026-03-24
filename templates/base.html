@@ -26,11 +26,11 @@
           {% if current_user.is_authenticated %}
               <a class="nav-link" href="{{ url_for('main_bp.dashboard') }}">Dashboard</a>
 
-              {% if current_user.role not in ['teacher', 'student'] %}
+              {% if current_user.role not in ['teacher', 'student', 'admin'] %}
               <a class="nav-link" href="{{ url_for('students_bp.list_students') }}">Estudiantes</a>
               {% endif %}
 
-              {% if current_user.role in ['admin', 'super_admin'] %}
+              {% if current_user.role == 'super_admin' %}
               <a class="nav-link" href="{{ url_for('students_bp.list_subjects') }}">Materias</a>
               {% endif %}
 
@@ -51,6 +51,9 @@
 
               {% if current_user.role in ['admin', 'super_admin'] %}
                 <a class="nav-link" href="{{ url_for('payments_admin_bp.admin_payments') }}">Admin</a>
+                <a class="nav-link" href="{{ url_for('payments_admin_bp.admin_debts') }}">Deudores</a>
+              {% endif %}
+              {% if current_user.role == 'super_admin' %}
                 <a class="nav-link" href="{{ url_for('students_bp.list_users') }}">Usuarios</a>
               {% endif %}
                 <a class="nav-link text-warning" href="{{ url_for('auth_bp.logout') }}">Salir</a>

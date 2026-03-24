@@ -2,10 +2,10 @@ import pytest
 from models import User, Subject, UserRole
 from extensions import db
 
-def test_create_subject_with_teacher(client, admin_client, teacher_user):
+def test_create_subject_with_teacher(client, super_admin_client, teacher_user):
     """Test creating a subject with a teacher assigned."""
     # Login as admin
-    # admin_client fixture already logs in? Let's check conftest.
+    # super_admin_client fixture already logs in? Let's check conftest.
     # Yes: resp = client.post("/login", ...); assert resp.status_code ...; return client
 
     # Post new subject data
@@ -18,7 +18,7 @@ def test_create_subject_with_teacher(client, admin_client, teacher_user):
         "teacher_id": str(teacher_user.id)
     }
 
-    resp = admin_client.post("/students/subjects/new", data=data, follow_redirects=True)
+    resp = super_admin_client.post("/students/subjects/new", data=data, follow_redirects=True)
     assert resp.status_code == 200
     assert b"Materia creada" in resp.data
 
@@ -27,7 +27,7 @@ def test_create_subject_with_teacher(client, admin_client, teacher_user):
     assert subj is not None
     assert subj.teacher_id == teacher_user.id
 
-def test_edit_subject_assign_teacher(client, admin_client, teacher_user, sample_subjects):
+def test_edit_subject_assign_teacher(client, super_admin_client, teacher_user, sample_subjects):
     """Test assigning a teacher to an existing subject."""
     subj = sample_subjects[0]
     assert subj.teacher_id is None
@@ -41,7 +41,7 @@ def test_edit_subject_assign_teacher(client, admin_client, teacher_user, sample_
         "teacher_id": str(teacher_user.id)
     }
 
-    resp = admin_client.post(f"/students/subjects/{subj.id}/edit", data=data, follow_redirects=True)
+    resp = super_admin_client.post(f"/students/subjects/{subj.id}/edit", data=data, follow_redirects=True)
     assert resp.status_code == 200
     assert b"Materia actualizada" in resp.data
 
@@ -49,7 +49,7 @@ def test_edit_subject_assign_teacher(client, admin_client, teacher_user, sample_
     db_subj = db.session.get(Subject, subj.id)
     assert db_subj.teacher_id == teacher_user.id
 
-def test_edit_subject_remove_teacher(client, admin_client, teacher_user, sample_subjects):
+def test_edit_subject_remove_teacher(client, super_admin_client, teacher_user, sample_subjects):
     """Test removing a teacher from a subject."""
     subj = sample_subjects[0]
     subj.teacher_id = teacher_user.id
@@ -65,14 +65,14 @@ def test_edit_subject_remove_teacher(client, admin_client, teacher_user, sample_
         "teacher_id": ""
     }
 
-    resp = admin_client.post(f"/students/subjects/{subj.id}/edit", data=data, follow_redirects=True)
+    resp = super_admin_client.post(f"/students/subjects/{subj.id}/edit", data=data, follow_redirects=True)
     assert resp.status_code == 200
 
     # Verify
     db_subj = db.session.get(Subject, subj.id)
     assert db_subj.teacher_id is None
 
-def test_create_subject_invalid_teacher(client, admin_client):
+def test_create_subject_invalid_teacher(client, super_admin_client):
     """Test creating a subject with a non-existent teacher ID."""
     data = {
         "name": "Chemistry 101",
@@ -80,7 +80,7 @@ def test_create_subject_invalid_teacher(client, admin_client):
         "teacher_id": "99999"  # Non-existent ID
     }
 
-    resp = admin_client.post("/students/subjects/new", data=data, follow_redirects=True)
+    resp = super_admin_client.post("/students/subjects/new", data=data, follow_redirects=True)
     assert resp.status_code == 200
     # Flash message check might be tricky if it depends on session/template rendering,
     # but follow_redirects=True renders the target page.

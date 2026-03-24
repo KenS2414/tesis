@@ -2,7 +2,7 @@ import io
 from werkzeug.security import generate_password_hash
 
 
-def test_gradebook_report(auth_client, app, sample_subjects, sample_students):
+def test_gradebook_report(super_admin_client, app, sample_subjects, sample_students):
     from extensions import db
     from models import Grade
 
@@ -14,14 +14,14 @@ def test_gradebook_report(auth_client, app, sample_subjects, sample_students):
     db.session.add_all([g1, g2])
     db.session.commit()
 
-    client = auth_client
+    client = super_admin_client
     resp = client.get(f"/students/reports/gradebook?subject_id={s.id}")
     assert resp.status_code == 200
     assert resp.headers.get('Content-Type') == 'application/pdf'
     assert len(resp.data) > 0
 
 
-def test_payment_report(auth_client, app, sample_students):
+def test_payment_report(super_admin_client, app, sample_students):
     from extensions import db
     from models import Payment
 
@@ -30,7 +30,7 @@ def test_payment_report(auth_client, app, sample_students):
     db.session.add(p)
     db.session.commit()
 
-    client = auth_client
+    client = super_admin_client
     resp = client.get(f"/students/reports/payment/{p.id}")
     assert resp.status_code == 200
     assert resp.headers.get('Content-Type') == 'application/pdf'

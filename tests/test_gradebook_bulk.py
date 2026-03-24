@@ -2,13 +2,13 @@ import json
 from werkzeug.security import generate_password_hash
 
 
-def test_gradebook_bulk_update_and_export(auth_client, app, sample_subjects, sample_students):
+def test_gradebook_bulk_update_and_export(super_admin_client, app, sample_subjects, sample_students):
     from extensions import db
     from models import Grade
 
     subj = sample_subjects[0]
     students = sample_students
-    client = auth_client
+    client = super_admin_client
 
     payload = {
         'grades': [
