@@ -1,8 +1,8 @@
 import os
 from app import create_app
 from extensions import db
-from models import User, Student, Subject, Grade
-from werkzeug.security import generate_password_hash, check_password_hash
+from models import User, Subject
+from werkzeug.security import generate_password_hash
 import init_db
 
 app = create_app()
