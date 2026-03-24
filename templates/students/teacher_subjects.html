@@ -1,0 +1,27 @@
+{% extends 'base.html' %}
+{% block title %}Mis Materias{% endblock %}
+
+{% block content %}
+  <h1 class="h3">Mis Materias</h1>
+  {% if data %}
+    {% for item in data %}
+      <div class="card mb-3">
+        <div class="card-body">
+          <h5 class="card-title">{{ item.subject.name }} {% if item.subject.code %}<small class="text-muted">({{ item.subject.code }})</small>{% endif %}</h5>
+          <p class="mb-2">Estudiantes:</p>
+          <ul>
+            {% for s in item.students %}
+              <li><a href="{{ url_for('students_bp.student_detail', student_id=s.id) }}">{{ s.first_name }} {{ s.last_name }}</a></li>
+            {% else %}
+              <li>No hay estudiantes con notas en esta materia.</li>
+            {% endfor %}
+          </ul>
+          <a class="btn btn-sm btn-outline-primary me-2" href="{{ url_for('students_bp.subject_report', subject_id=item.subject.id) }}">Ver informe</a>
+          <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('students_bp.subject_detail', subject_id=item.subject.id) }}">Ver materia</a>
+        </div>
+      </div>
+    {% endfor %}
+  {% else %}
+    <p>No tienes materias asignadas.</p>
+  {% endif %}
+{% endblock %}

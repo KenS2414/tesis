@@ -1,0 +1,49 @@
+{% extends 'base.html' %}
+{% block title %}Nuevo Docente{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-6 col-md-8">
+    <div class="card shadow-sm border-0">
+      <div class="card-body p-4">
+        <h1 class="h4 mb-3">Crear perfil de docente</h1>
+        <p class="text-muted mb-4">Este usuario se creara con rol <strong>teacher</strong>.</p>
+
+        <form method="post" action="{{ url_for('students_bp.create_teacher_user') }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+
+          <div class="mb-3">
+            <label for="username" class="form-label">Usuario</label>
+            <input
+              id="username"
+              name="username"
+              class="form-control"
+              required
+              autocomplete="username"
+              placeholder="docente.apellido"
+            >
+          </div>
+
+          <div class="mb-4">
+            <label for="password" class="form-label">Contrasena</label>
+            <input
+              id="password"
+              name="password"
+              type="password"
+              class="form-control"
+              required
+              autocomplete="new-password"
+              placeholder="Define una contrasena segura"
+            >
+          </div>
+
+          <div class="d-flex gap-2">
+            <button type="submit" class="btn btn-primary">Crear docente</button>
+            <a href="{{ url_for('students_bp.list_users') }}" class="btn btn-outline-secondary">Cancelar</a>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

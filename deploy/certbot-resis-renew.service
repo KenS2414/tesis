@@ -1,0 +1,8 @@
+[Unit]
+Description=Certbot renewal for Resis (runs certbot renew and reloads nginx on success)
+After=network.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/certbot renew --quiet --deploy-hook 'systemctl reload nginx'
+Nice=10

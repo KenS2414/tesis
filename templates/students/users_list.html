@@ -1,0 +1,36 @@
+{% extends 'base.html' %}
+{% block title %}Usuarios{% endblock %}
+{% block content %}
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h2 class="h4 mb-0">Usuarios</h2>
+    <a class="btn btn-primary" href="{{ url_for('students_bp.create_teacher_user') }}">Nuevo docente</a>
+  </div>
+  <div class="table-responsive">
+    <table class="table table-striped">
+      <thead>
+        <tr><th>Username</th><th>Role</th><th>Acción</th></tr>
+      </thead>
+      <tbody>
+        {% for u in users %}
+          <tr>
+            <td>{{ u.username }}</td>
+            <td>{{ u.role }}</td>
+            <td>
+              <form method="post" action="{{ url_for('students_bp.set_user_role', user_id=u.id) }}" class="d-flex gap-2 align-items-center">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+                <select name="role" class="form-select form-select-sm">
+                  <option value="user" {% if u.role=='user' %}selected{% endif %}>user</option>
+                  <option value="student" {% if u.role=='student' %}selected{% endif %}>student</option>
+                  <option value="teacher" {% if u.role=='teacher' %}selected{% endif %}>teacher</option>
+                  <option value="admin" {% if u.role=='admin' %}selected{% endif %}>admin</option>
+                  <option value="super_admin" {% if u.role=='super_admin' %}selected{% endif %}>super_admin</option>
+                </select>
+                <button type="submit" class="btn btn-sm btn-primary">Set role</button>
+              </form>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% endblock %}

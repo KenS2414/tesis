@@ -1,0 +1,21 @@
+{% extends 'base.html' %}
+
+{% block title %}Enviar Pago{% endblock %}
+{% block content %}
+  <h1 class="h4 mb-3">Enviar pago</h1>
+  <form method="post" enctype="multipart/form-data" class="row g-3">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+    <div class="col-md-4">
+      <label for="amount" class="form-label">Importe</label>
+      <input id="amount" name="amount" required class="form-control" />
+    </div>
+    <div class="col-md-8">
+      <label for="proof" class="form-label">Comprobante (archivo opcional)</label>
+      <input id="proof" name="proof" type="file" class="form-control" />
+    </div>
+    <div class="col-12">
+      <button type="submit" class="btn btn-primary">Enviar</button>
+      <a class="btn btn-link" href="{{ url_for('payments_student_bp.payments_list') }}">Cancelar</a>
+    </div>
+  </form>
+{% endblock %}

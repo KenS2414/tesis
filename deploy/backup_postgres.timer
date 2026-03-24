@@ -1,0 +1,20 @@
+[Unit]
+Description=Run resis Postgres backup daily
+
+[Timer]
+OnCalendar=*-*-* 03:30:00
+Persistent=true
+RandomizedDelaySec=3600
+
+[Install]
+WantedBy=timers.target
+[Unit]
+Description=Daily Resis Postgres backup timer
+
+[Timer]
+OnCalendar=*-*-* 02:00:00
+Persistent=true
+RandomizedDelaySec=1800
+
+[Install]
+WantedBy=timers.target

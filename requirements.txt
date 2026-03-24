@@ -1,0 +1,17 @@
+Flask>=2.2,<3
+Flask-Login>=0.6.2
+Flask-SQLAlchemy>=3.0
+Flask-WTF>=1.0.0
+python-dotenv>=1.0.0
+pytest>=7.0.0
+pytest-xdist>=3.1.0
+Pillow>=9.0.0
+Flask-Migrate>=4.0.0
+psycopg2-binary>=2.9.6
+boto3>=1.26.0
+moto[s3]>=4.1.0
+reportlab>=4.0
+
+marshmallow>=4.2.2
+marshmallow-sqlalchemy>=1.4.2
+sentry-sdk>=1.0.0

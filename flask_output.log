@@ -1,0 +1,35 @@
+ * Debug mode: off
+[31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on http://127.0.0.1:5000
+[33mPress CTRL+C to quit[0m
+127.0.0.1 - - [08/Feb/2026 05:49:50] "GET /login HTTP/1.1" 200 -
+127.0.0.1 - - [08/Feb/2026 05:49:50] "GET /static/style.css?v=5 HTTP/1.1" 200 -
+127.0.0.1 - - [08/Feb/2026 05:49:50] "GET /static/images/logo.svg?v=5 HTTP/1.1" 200 -
+127.0.0.1 - - [08/Feb/2026 05:49:50] "[33mGET /static/js/helpers.min.js?v=5 HTTP/1.1[0m" 404 -
+127.0.0.1 - - [08/Feb/2026 05:49:52] "[32mPOST /login HTTP/1.1[0m" 302 -
+127.0.0.1 - - [08/Feb/2026 05:49:52] "GET /dashboard HTTP/1.1" 200 -
+127.0.0.1 - - [08/Feb/2026 05:49:52] "[36mGET /static/images/logo.svg?v=5 HTTP/1.1[0m" 304 -
+127.0.0.1 - - [08/Feb/2026 05:49:52] "[33mGET /static/js/helpers.min.js?v=5 HTTP/1.1[0m" 404 -
+127.0.0.1 - - [08/Feb/2026 05:49:52] "[36mGET /static/style.css?v=5 HTTP/1.1[0m" 304 -
+127.0.0.1 - - [08/Feb/2026 05:49:52] "[32mGET /students HTTP/1.1[0m" 302 -
+127.0.0.1 - - [08/Feb/2026 05:49:52] "GET /students/ HTTP/1.1" 200 -
+127.0.0.1 - - [08/Feb/2026 05:49:52] "[36mGET /static/images/logo.svg?v=5 HTTP/1.1[0m" 304 -
+127.0.0.1 - - [08/Feb/2026 05:49:52] "[36mGET /static/style.css?v=5 HTTP/1.1[0m" 304 -
+127.0.0.1 - - [08/Feb/2026 05:49:52] "[33mGET /static/js/helpers.min.js?v=5 HTTP/1.1[0m" 404 -
+127.0.0.1 - - [08/Feb/2026 05:50:30] "GET /login HTTP/1.1" 200 -
+127.0.0.1 - - [08/Feb/2026 05:50:30] "GET /static/style.css?v=5 HTTP/1.1" 200 -
+127.0.0.1 - - [08/Feb/2026 05:50:30] "[33mGET /static/js/helpers.min.js?v=5 HTTP/1.1[0m" 404 -
+127.0.0.1 - - [08/Feb/2026 05:50:30] "GET /static/images/logo.svg?v=5 HTTP/1.1" 200 -
+127.0.0.1 - - [08/Feb/2026 05:50:30] "GET /register HTTP/1.1" 200 -
+127.0.0.1 - - [08/Feb/2026 05:50:30] "[33mGET /static/js/helpers.min.js?v=5 HTTP/1.1[0m" 404 -
+127.0.0.1 - - [08/Feb/2026 05:50:30] "[36mGET /static/style.css?v=5 HTTP/1.1[0m" 304 -
+127.0.0.1 - - [08/Feb/2026 05:50:30] "[36mGET /static/images/logo.svg?v=5 HTTP/1.1[0m" 304 -
+127.0.0.1 - - [08/Feb/2026 05:50:31] "GET /login HTTP/1.1" 200 -
+127.0.0.1 - - [08/Feb/2026 05:50:31] "[33mGET /static/js/helpers.min.js?v=5 HTTP/1.1[0m" 404 -
+127.0.0.1 - - [08/Feb/2026 05:50:31] "[36mGET /static/style.css?v=5 HTTP/1.1[0m" 304 -
+127.0.0.1 - - [08/Feb/2026 05:50:31] "[36mGET /static/images/logo.svg?v=5 HTTP/1.1[0m" 304 -
+127.0.0.1 - - [08/Feb/2026 05:50:31] "[32mPOST /login HTTP/1.1[0m" 302 -
+127.0.0.1 - - [08/Feb/2026 05:50:31] "GET /dashboard HTTP/1.1" 200 -
+127.0.0.1 - - [08/Feb/2026 05:50:31] "[33mGET /static/js/helpers.min.js?v=5 HTTP/1.1[0m" 404 -
+127.0.0.1 - - [08/Feb/2026 05:50:31] "[36mGET /static/images/logo.svg?v=5 HTTP/1.1[0m" 304 -
+127.0.0.1 - - [08/Feb/2026 05:50:31] "[36mGET /static/style.css?v=5 HTTP/1.1[0m" 304 -

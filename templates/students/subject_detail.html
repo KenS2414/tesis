@@ -1,0 +1,44 @@
+{% extends 'base.html' %}
+{% block title %}Materia: {{ subject.name }}{% endblock %}
+
+{% block content %}
+  <div class="d-flex justify-content-between align-items-start mb-3">
+    <div>
+      <h2 class="h4">{{ subject.name }} {% if subject.code %}<small class="text-muted">({{ subject.code }})</small>{% endif %}</h2>
+      <p class="mb-1">Año/Grupo: {{ subject.year_group or 'Sin año/grupo' }}</p>
+      <p class="mb-1">Categoría: {{ subject.category or 'N/A' }} | Créditos: {{ subject.credits or '-' }}</p>
+    </div>
+    <div>
+      <a class="btn btn-outline-secondary" href="{{ url_for('students_bp.list_subjects') }}">Volver</a>
+    </div>
+  </div>
+
+  {% if current_user.role == 'student' %}
+    <h5>Mis Notas en esta materia</h5>
+    <ul class="list-group mb-3">
+      {% for g in grades %}
+        <li class="list-group-item">{{ g.term or '' }} - {{ g.value or g.score }} {% if g.comment %}- {{ g.comment }}{% endif %}</li>
+      {% else %}
+        <li class="list-group-item">No tienes notas registradas en esta materia.</li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <h5>Estudiantes con notas</h5>
+    {% for item in data %}
+      <div class="card mb-2">
+        <div class="card-body">
+          <h6 class="card-subtitle mb-2">{{ item.student.first_name }} {{ item.student.last_name }}</h6>
+          <p>Promedio: {% if item.average is not none %}{{ '%.2f'|format(item.average) }}{% else %}-{% endif %}</p>
+          <ul>
+            {% for g in item.grades %}
+              <li>{{ g.term or '' }} - {{ g.value or g.score }} {% if g.comment %}- {{ g.comment }}{% endif %}</li>
+            {% endfor %}
+          </ul>
+        </div>
+      </div>
+    {% else %}
+      <p>No hay estudiantes con notas en esta materia.</p>
+    {% endfor %}
+  {% endif %}
+
+{% endblock %}

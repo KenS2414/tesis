@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="600" viewBox="0 0 1000 600">
+  <style>
+    .box { fill: #f7f9fc; stroke:#2b6cb0; stroke-width:2; rx:6; }
+    .title { font: 600 16px sans-serif; fill:#1a365d }
+    .text { font: 14px sans-serif; fill:#102a43 }
+    .small { font: 12px sans-serif; fill:#2d3748 }
+    .arrow { stroke:#2b6cb0; stroke-width:2; fill:none; marker-end:url(#arrowhead);} 
+  </style>
+
+  <defs>
+    <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#2b6cb0" />
+    </marker>
+  </defs>
+
+  <!-- Model boxes -->
+  <rect class="box" x="50" y="50" width="240" height="90" />
+  <text class="title" x="70" y="75">User (models.User)</text>
+  <text class="text" x="70" y="98">id, username, password_hash, role</text>
+  <text class="small" x="70" y="116">routes: /login /register /logout /dashboard</text>
+
+  <rect class="box" x="380" y="50" width="240" height="90" />
+  <text class="title" x="400" y="75">Student (models.Student)</text>
+  <text class="text" x="400" y="98">id, first_name, last_name, email, dob</text>
+  <text class="small" x="400" y="116">routes: /students, /students/new</text>
+
+  <rect class="box" x="710" y="50" width="240" height="90" />
+  <text class="title" x="730" y="75">Payment (models.Payment)</text>
+  <text class="text" x="730" y="98">id, student_id, amount, status, proof_filename</text>
+  <text class="small" x="730" y="116">routes: /payments, /payments/new, /admin/payments</text>
+
+  <!-- arrows between models -->
+  <path class="arrow" d="M290 95 L380 95" />
+  <text class="small" x="300" y="88">creates</text>
+
+  <path class="arrow" d="M620 95 L710 95" />
+  <text class="small" x="620" y="88">has payments</text>
+
+  <!-- Routes / UI boxes -->
+  <rect class="box" x="50" y="190" width="900" height="300" />
+  <text class="title" x="70" y="215">Routes & Templates</text>
+
+  <text class="small" x="90" y="245">/ (login page) — templates/login.html</text>
+  <text class="small" x="90" y="265">/register — templates/register.html (creates User + Student)</text>
+  <text class="small" x="90" y="285">/dashboard — templates/dashboard.html</text>
+  <text class="small" x="90" y="305">/students, /students/new, /students/&lt;id&gt;/edit — templates/students/*</text>
+  <text class="small" x="90" y="325">/payments, /payments/new — templates/payments/* (upload into static/uploads)</text>
+  <text class="small" x="90" y="345">/admin/payments, approve/reject — admin-only</text>
+
+  <!-- Notes -->
+  <text class="small" x="90" y="380">Auth: Flask-Login (models.User). Registration links email==username to Student.email.</text>
+  <text class="small" x="90" y="400">Uploads validated with Pillow (images) and PDF header check; stored in static/uploads/.</text>
+  <text class="small" x="90" y="420">Migrations: Flask-Migrate (migrations/). DB URL: env var DATABASE_URL or sqlite:///app.db</text>
+
+</svg>

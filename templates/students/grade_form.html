@@ -1,0 +1,27 @@
+{% extends 'base.html' %}
+{% block title %}Editar nota{% endblock %}
+{% block content %}
+  <h2 class="h5">Editar nota</h2>
+  <form method="post" class="row g-3">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+    <div class="col-md-6">
+      <label class="form-label">Materia</label>
+      <input readonly class="form-control" value="{{ grade.subject.name if grade and grade.subject else '' }}" />
+    </div>
+    <div class="col-md-2">
+      <label for="score" class="form-label">Nota (0-100)</label>
+      <input name="score" id="score" class="form-control" value="{{ grade.score if grade.score is not none else '' }}" />
+    </div>
+    <div class="col-md-2">
+      <label for="term" class="form-label">Periodo</label>
+      <input name="term" id="term" class="form-control" value="{{ grade.term or '' }}" />
+    </div>
+    <div class="col-md-12">
+      <label for="comment" class="form-label">Comentario</label>
+      <input name="comment" id="comment" class="form-control" value="{{ grade.comment or '' }}" />
+    </div>
+    <div class="col-12">
+      <button type="submit" class="btn btn-primary">Guardar</button>
+    </div>
+  </form>
+{% endblock %}

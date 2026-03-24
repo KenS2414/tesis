@@ -1,0 +1,48 @@
+{% extends 'base.html' %}
+
+{% block title %}Pagos pendientes - Administración{% endblock %}
+{% block content %}
+  <h1 class="h4 mb-3">Todos los pagos</h1>
+  <div class="table-responsive">
+    <table class="table table-striped align-middle">
+      <thead>
+        <tr><th>ID</th><th>Estudiante</th><th>Importe</th><th>Estado</th><th>Comprobante</th><th>Acciones</th></tr>
+      </thead>
+      <tbody>
+        {% for p in payments %}
+          <tr>
+            <td>{{ p.id }}</td>
+            <td>{{ p.student.first_name }} {{ p.student.last_name }} (ID: {{ p.student.id }})</td>
+            <td>{{ '%.2f'|format(p.amount) }}</td>
+            <td>{{ p.status }}</td>
+            <td>
+              {% if p.proof_url %}
+                <a href="{{ p.proof_url }}" target="_blank">Ver</a>
+              {% elif p.proof_filename %}
+                <a href="/static/uploads/{{ p.proof_filename }}" target="_blank">Ver</a>
+              {% else %}
+                -
+              {% endif %}
+            </td>
+            <td>
+              {% if p.status == 'pending' %}
+                <form method="post" action="{{ url_for('payments_admin_bp.admin_payment_approve', payment_id=p.id) }}" class="d-inline">
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+                  <button type="submit" class="btn btn-sm btn-success me-1">Aprobar</button>
+                </form>
+                <form method="post" action="{{ url_for('payments_admin_bp.admin_payment_reject', payment_id=p.id) }}" class="d-inline">
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+                  <button type="submit" class="btn btn-sm btn-danger">Rechazar</button>
+                </form>
+              {% else %}
+                -
+              {% endif %}
+            </td>
+          </tr>
+        {% else %}
+          <tr><td colspan="6">No hay pagos.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% endblock %}

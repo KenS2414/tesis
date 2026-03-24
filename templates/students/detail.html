@@ -1,0 +1,108 @@
+{% extends 'base.html' %}
+{% block title %}Estudiante: {{ student.first_name }} {{ student.last_name }}{% endblock %}
+
+{% block content %}
+  <div class="d-flex justify-content-between align-items-start mb-3">
+    <div>
+      <h2 class="h4">{{ student.first_name }} {{ student.last_name }}</h2>
+      <p class="mb-1">Email: {{ student.email }}</p>
+      <p class="mb-1">Año actual: {{ student.current_year_group or 'Sin asignar' }}</p>
+      <p class="text-muted">Fecha de nacimiento: {{ student.dob }}</p>
+    </div>
+    <div>
+      <a class="btn btn-outline-secondary" href="{{ url_for('students_bp.list_students') }}">Volver</a>
+    </div>
+  </div>
+
+  <div class="card mb-3">
+    <div class="card-body">
+      <h5 class="card-title">Materias</h5>
+      {% if current_user.is_authenticated and current_user.role in ['admin', 'super_admin'] %}
+      <div class="mb-2"><a class="btn btn-sm btn-primary" href="{{ url_for('students_bp.new_subject') }}">Crear nueva materia</a></div>
+      {% endif %}
+      <ul class="list-group">
+        {% for subj in subjects %}
+          <li class="list-group-item d-flex justify-content-between align-items-center">
+            <div>{{ subj.name }} {% if subj.code %} <small class="text-muted">({{ subj.code }})</small>{% endif %}</div>
+            <div>
+              {% if current_user.is_authenticated and current_user.role in ['admin', 'super_admin'] %}
+                <a class="btn btn-sm btn-outline-primary me-2" href="{{ url_for('students_bp.edit_subject', subject_id=subj.id) }}">Editar</a>
+                <form action="{{ url_for('students_bp.delete_subject', subject_id=subj.id) }}" method="post" class="d-inline">
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+                  <button
+                    type="submit"
+                    class="btn btn-sm btn-outline-danger"
+                    onclick='return confirm({{ ("¿Eliminar la materia \"" ~ subj.name ~ "\"? Esta acción no se puede deshacer.")|tojson }});'
+                  >
+                    Eliminar
+                  </button>
+                </form>
+              {% endif %}
+            </div>
+          </li>
+        {% else %}
+          <li class="list-group-item">No hay materias.</li>
+        {% endfor %}
+      </ul>
+    </div>
+  </div>
+
+  <div class="card mb-3">
+    <div class="card-body">
+      <h5 class="card-title">Añadir nota</h5>
+      {% if current_user.is_authenticated and current_user.role in ['teacher', 'admin', 'super_admin'] %}
+      <form action="{{ url_for('students_bp.add_grade', student_id=student.id) }}" method="post" class="row g-2">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+        <div class="col-md-4">
+          <label class="form-label">Materia</label>
+          <select name="subject_id" id="subject_id" class="form-select">
+            {% for subj in subjects %}
+              <option value="{{ subj.id }}">{{ subj.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-2">
+          <label class="form-label">Nota</label>
+          <input name="score" id="score" class="form-control" />
+        </div>
+        <div class="col-md-2">
+          <label class="form-label">Periodo</label>
+          <input name="term" id="term" class="form-control" />
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">Comentario</label>
+          <input name="comment" id="comment" class="form-control" />
+        </div>
+        <div class="col-12 mt-2">
+          <button type="submit" class="btn btn-primary">Añadir nota</button>
+        </div>
+      </form>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-body">
+      <h5 class="card-title">Notas</h5>
+      <ul class="list-group">
+        {% for g in grades %}
+          <li class="list-group-item d-flex justify-content-between align-items-center">
+            <div>{{ g.subject.name }}: {{ g.score }} <small class="text-muted">({{ g.term }})</small>{% if g.comment %} - {{ g.comment }}{% endif %}</div>
+            <div>
+              {% if current_user.is_authenticated and current_user.role in ['teacher', 'admin', 'super_admin'] %}
+                <a class="btn btn-sm btn-outline-primary me-2" href="{{ url_for('students_bp.edit_grade', grade_id=g.id) }}">Editar</a>
+                <form action="{{ url_for('students_bp.delete_grade', grade_id=g.id) }}" method="post" class="d-inline">
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+                  <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Eliminar nota?')">Eliminar</button>
+                </form>
+              {% endif %}
+            </div>
+          </li>
+        {% else %}
+          <li class="list-group-item">No hay notas.</li>
+        {% endfor %}
+      </ul>
+    </div>
+  </div>
+
+{% endblock %}

@@ -1,0 +1,161 @@
+{% extends 'base.html' %}
+
+{% block title %}Panel de Control{% endblock %}
+
+{% block content %}
+<div class="mb-5">
+    <h1 class="h3 mb-2">Panel de Control</h1>
+    <p class="text-muted">Bienvenido de nuevo, <strong>{{ user.username }}</strong>.</p>
+</div>
+
+<div class="row g-4">
+    {% if user.role not in ['teacher', 'student'] %}
+    <!-- Estudiantes Card -->
+    <div class="col-md-6 col-lg-4">
+        <div class="card h-100 border-0 shadow-sm hover-card">
+            <div class="card-body text-center p-4">
+                <div class="mb-3 text-primary">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                        <circle cx="9" cy="7" r="4"></circle>
+                        <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                        <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                    </svg>
+                </div>
+                <h3 class="h5 card-title">Estudiantes</h3>
+                <p class="card-text text-muted small">Gestiona la información académica y personal de los estudiantes.</p>
+                <a href="{{ url_for('students_bp.list_students') }}" class="btn btn-primary w-100 mt-2">Ver Estudiantes</a>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    {% if user.role != 'teacher' %}
+    <!-- Pagos Card -->
+    <div class="col-md-6 col-lg-4">
+        <div class="card h-100 border-0 shadow-sm hover-card">
+            <div class="card-body text-center p-4">
+                <div class="mb-3 text-warning">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="2" y="5" width="20" height="14" rx="2"></rect>
+                        <line x1="2" y1="10" x2="22" y2="10"></line>
+                        <line x1="12" y1="15" x2="12" y2="15"></line>
+                    </svg>
+                </div>
+                <h3 class="h5 card-title">Mis Pagos</h3>
+                <p class="card-text text-muted small">Registra pagos, sube comprobantes y consulta tu historial.</p>
+                <a href="{{ url_for('payments_student_bp.payments_list') }}" class="btn btn-primary w-100 mt-2">Gestionar Pagos</a>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    {% if user.role == 'teacher' %}
+    {% if teacher_subjects %}
+    {% for subject in teacher_subjects %}
+    <div class="col-md-6 col-lg-4">
+        <div class="card h-100 border-0 shadow-sm hover-card">
+            <div class="card-body text-center p-4">
+                <div class="mb-3 text-info">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path>
+                        <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path>
+                    </svg>
+                </div>
+                <h3 class="h5 card-title">{{ subject.name }}</h3>
+                <p class="card-text text-muted small">Gestiona notas y estudiantes de esta materia.</p>
+                <a href="{{ url_for('students_bp.subject_detail', subject_id=subject.id) }}" class="btn btn-primary w-100 mt-2">Ver Materia</a>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+    {% else %}
+    <div class="col-12">
+        <div class="alert alert-info mb-0" role="alert">
+            No tienes materias asignadas por ahora.
+        </div>
+    </div>
+    {% endif %}
+    {% endif %}
+
+    {% if user.role == 'student' %}
+    <!-- Materias Card (Student) -->
+    <div class="col-md-6 col-lg-4">
+        <div class="card h-100 border-0 shadow-sm hover-card">
+            <div class="card-body text-center p-4">
+                <div class="mb-3 text-info">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path>
+                        <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path>
+                    </svg>
+                </div>
+                <h3 class="h5 card-title">Mis Materias</h3>
+                <p class="card-text text-muted small">Consulta tus materias y calificaciones.</p>
+                {% set student = user.get_student() %}
+                {% if student %}
+                <a href="{{ url_for('students_bp.student_detail', student_id=student.id) }}" class="btn btn-primary w-100 mt-2">Ver Materias</a>
+                {% else %}
+                <button disabled class="btn btn-secondary w-100 mt-2">Perfil no vinculado</button>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    {% if current_user.is_authenticated and current_user.role in ['admin', 'super_admin'] %}
+    <!-- Admin Materias Card -->
+    <div class="col-md-6 col-lg-4">
+        <div class="card h-100 border-0 shadow-sm hover-card" style="border-top: 4px solid #0ea5e9 !important;">
+            <div class="card-body text-center p-4">
+                <div class="mb-3 text-info">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path>
+                        <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path>
+                    </svg>
+                </div>
+                <h3 class="h5 card-title">Materias</h3>
+                <p class="card-text text-muted small">Asigna materias a docentes y administra su configuración.</p>
+                <a href="{{ url_for('students_bp.list_subjects') }}" class="btn btn-primary w-100 mt-2">Gestionar Materias</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Admin Usuarios Card -->
+    <div class="col-md-6 col-lg-4">
+        <div class="card h-100 border-0 shadow-sm hover-card" style="border-top: 4px solid #1f6feb !important;">
+            <div class="card-body text-center p-4">
+                <div class="mb-3 text-primary">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                        <circle cx="8.5" cy="7" r="4"></circle>
+                        <line x1="20" y1="8" x2="20" y2="14"></line>
+                        <line x1="23" y1="11" x2="17" y2="11"></line>
+                    </svg>
+                </div>
+                <h3 class="h5 card-title">Usuarios</h3>
+                <p class="card-text text-muted small">Administra cuentas y crea perfiles de docentes.</p>
+                <a href="{{ url_for('students_bp.list_users') }}" class="btn btn-primary w-100 mt-2">Gestionar Usuarios</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Admin Pagos Card -->
+    <div class="col-md-6 col-lg-4">
+        <div class="card h-100 border-0 shadow-sm hover-card" style="border-top: 4px solid var(--brand-gold) !important;">
+            <div class="card-body text-center p-4">
+                <div class="mb-3 text-danger">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                        <path d="M9 12l2 2 4-4"></path>
+                    </svg>
+                </div>
+                <h3 class="h5 card-title">Administración</h3>
+                <p class="card-text text-muted small">Verificar y aprobar pagos pendientes de todos los estudiantes.</p>
+                <a href="{{ url_for('payments_admin_bp.admin_payments') }}" class="btn btn-outline-primary w-100 mt-2">Panel Admin</a>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+{% endblock %}

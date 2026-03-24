@@ -1,0 +1,73 @@
+{% extends 'base.html' %}
+
+{% block title %}Estudiantes{% endblock %}
+
+{% block content %}
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h1 class="h3">Estudiantes</h1>
+    <a class="btn btn-success" href="{{ url_for('students_bp.student_create') }}">Nuevo estudiante</a>
+  </div>
+
+  <form method="get" action="{{ url_for('students_bp.list_students') }}" class="row g-2 mb-3">
+    <div class="col-md-6">
+      <input name="q" id="q" placeholder="Buscar nombre o email" value="{{ q or '' }}" class="form-control" />
+    </div>
+    <div class="col-md-3">
+      <select name="subject_id" id="subject_id" class="form-select">
+        <option value="">Todas</option>
+        {% for subj in subjects %}
+          <option value="{{ subj.id }}" {% if subject_id and subject_id == subj.id %}selected{% endif %}>{{ subj.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-md-3 d-flex gap-2">
+      <button type="submit" class="btn btn-primary">Buscar</button>
+      <button type="button" class="btn btn-outline-secondary btn-clear-filters" aria-label="Borrar filtros" title="Borrar filtros" data-clear-target="form">Borrar</button>
+    </div>
+  </form>
+
+  <div id="aria-live" aria-live="polite" class="visually-hidden"></div>
+
+  <div class="table-responsive">
+    <table class="table table-striped align-middle">
+      <thead>
+        <tr><th>ID</th><th>Nombre</th><th>Email</th><th>Acciones</th></tr>
+      </thead>
+      <tbody>
+        {% for s in students %}
+          <tr>
+            <td>{{ s.id }}</td>
+            <td>{{ s.first_name }} {{ s.last_name }}</td>
+            <td>{{ s.email or '' }}</td>
+            <td>
+              {% if current_user.is_authenticated and current_user.role in ['admin', 'super_admin'] %}
+              <a class="btn btn-sm btn-outline-primary" href="{{ url_for('students_bp.student_edit', student_id=s.id) }}">Editar</a>
+              <form method="post" action="{{ url_for('students_bp.student_delete', student_id=s.id) }}" class="d-inline ms-2">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+                <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Eliminar estudiante?')">Eliminar</button>
+              </form>
+              {% endif %}
+            </td>
+          </tr>
+        {% else %}
+          <tr><td colspan="4">No hay estudiantes.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  {% if pagination and pagination.pages > 1 %}
+    <nav aria-label="Paginación">
+      <ul class="pagination">
+        {% if pagination.has_prev %}
+          <li class="page-item"><a class="page-link" href="?page={{ pagination.prev_num }}{% if q %}&q={{ q }}{% endif %}{% if subject_id %}&subject_id={{ subject_id }}{% endif %}">Anterior</a></li>
+        {% endif %}
+        <li class="page-item disabled"><span class="page-link">Página {{ pagination.page }} de {{ pagination.pages }}</span></li>
+        {% if pagination.has_next %}
+          <li class="page-item"><a class="page-link" href="?page={{ pagination.next_num }}{% if q %}&q={{ q }}{% endif %}{% if subject_id %}&subject_id={{ subject_id }}{% endif %}">Siguiente</a></li>
+        {% endif %}
+      </ul>
+    </nav>
+  {% endif %}
+
+{% endblock %}

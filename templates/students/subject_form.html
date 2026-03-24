@@ -1,0 +1,54 @@
+{% extends 'base.html' %}
+{% block title %}{% if subject %}Editar materia{% else %}Nueva materia{% endif %}{% endblock %}
+{% block content %}
+  <h2 class="h5">{% if subject %}Editar materia{% else %}Nueva materia{% endif %}</h2>
+  <form method="post" class="row g-3">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+    <div class="col-md-6">
+      <label for="name" class="form-label">Nombre</label>
+      <input name="name" id="name" value="{{ subject.name if subject else '' }}" class="form-control" />
+    </div>
+    <div class="col-md-3">
+      <label for="code" class="form-label">Código</label>
+      <input name="code" id="code" value="{{ subject.code if subject else '' }}" class="form-control" />
+    </div>
+    <div class="col-md-3">
+      <label for="year_group" class="form-label">Año/Grupo</label>
+      {% set selected_year_group = subject.year_group if subject else '' %}
+      <select name="year_group" id="year_group" class="form-select">
+        <option value="">-- Selecciona un año --</option>
+        {% for yg in year_group_options %}
+          <option value="{{ yg }}" {% if selected_year_group == yg %}selected{% endif %}>{{ yg }}</option>
+        {% endfor %}
+        {% if selected_year_group and selected_year_group not in year_group_options %}
+          <option value="{{ selected_year_group }}" selected>{{ selected_year_group }}</option>
+        {% endif %}
+      </select>
+    </div>
+    <div class="col-md-3">
+      <label for="category" class="form-label">Categoría</label>
+      <input name="category" id="category" value="{{ subject.category if subject else '' }}" class="form-control" />
+    </div>
+    <div class="col-md-2">
+      <label for="credits" class="form-label">Créditos</label>
+      <input name="credits" id="credits" value="{{ subject.credits if subject and subject.credits is not none else '' }}" class="form-control" />
+    </div>
+    <div class="col-md-6">
+      <label for="teacher_id" class="form-label">Profesor</label>
+      <select name="teacher_id" id="teacher_id" class="form-select">
+        <option value="">-- Sin asignar --</option>
+        {% for t in teachers %}
+          <option value="{{ t.id }}" {% if subject and subject.teacher_id == t.id %}selected{% endif %}>{{ t.username }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-12">
+      <label for="description" class="form-label">Descripción</label>
+      <textarea name="description" id="description" class="form-control">{{ subject.description if subject else '' }}</textarea>
+    </div>
+    <div class="col-12 d-flex gap-2">
+      <button type="submit" class="btn btn-primary">{% if subject %}Guardar{% else %}Crear{% endif %}</button>
+      <a href="{{ url_for('students_bp.list_subjects') }}" class="btn btn-outline-secondary">Cancelar</a>
+    </div>
+  </form>
+{% endblock %}

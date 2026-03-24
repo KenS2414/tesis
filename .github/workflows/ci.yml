@@ -1,0 +1,147 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  unit-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      SECRET_KEY: test-ci-secret
+      ADMIN_PASSWORD: admin-ci-pass
+      DATABASE_URL: sqlite:///:memory:
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt
+
+      - name: Run unit/non-integration test suite
+        run: pytest -q -m "not integration"
+
+  integration-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: resis
+          POSTGRES_PASSWORD: resispass
+          POSTGRES_DB: resis
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U resis -d resis"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      SECRET_KEY: test-ci-secret
+      ADMIN_PASSWORD: admin-ci-pass
+      FLASK_APP: app:create_app
+      DATABASE_URL: postgresql://resis:resispass@127.0.0.1:5432/resis
+      MINIO_IMAGE: minio/minio:RELEASE.2024-12-13T22-19-12Z
+      S3_ENDPOINT: http://127.0.0.1:9000
+      S3_BUCKET: resis-uploads
+      AWS_ACCESS_KEY_ID: minioadmin
+      AWS_SECRET_ACCESS_KEY: minioadmin
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt
+
+      - name: Start MinIO
+        run: |
+          docker run -d --rm --name minio-ci \
+            -p 9000:9000 \
+            -e MINIO_ROOT_USER=${AWS_ACCESS_KEY_ID} \
+            -e MINIO_ROOT_PASSWORD=${AWS_SECRET_ACCESS_KEY} \
+            ${MINIO_IMAGE} server /data
+
+      - name: Wait for Postgres and MinIO
+        run: |
+          python - <<'PY'
+          import socket
+          import time
+
+          checks = [
+              ("127.0.0.1", 5432, "Postgres"),
+              ("127.0.0.1", 9000, "MinIO"),
+          ]
+
+          for host, port, name in checks:
+              deadline = time.time() + 60
+              while time.time() < deadline:
+                  sock = socket.socket()
+                  sock.settimeout(1)
+                  try:
+                      sock.connect((host, port))
+                      print(f"{name} listo en {host}:{port}")
+                      break
+                  except OSError:
+                      time.sleep(1)
+                  finally:
+                      sock.close()
+              else:
+                  raise SystemExit(f"{name} no estuvo disponible en {host}:{port}")
+          PY
+
+      - name: Create S3 bucket
+        run: python scripts/create_bucket.py
+
+      - name: Apply database migrations
+        run: python -m flask db upgrade
+
+      - name: Guardrail - ensure integration tests are collected
+        run: |
+          python -m pytest --collect-only -q -m integration > .integration-tests.txt
+          selected=$(grep -c "::" .integration-tests.txt || true)
+          echo "Integration tests collected: ${selected}"
+          if [ "${selected}" -lt 2 ]; then
+            echo "Expected at least 2 integration tests, got ${selected}"
+            cat .integration-tests.txt
+            exit 1
+          fi
+
+      - name: Run integration test suite
+        run: pytest -q -m integration

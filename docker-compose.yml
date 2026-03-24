@@ -1,0 +1,95 @@
+version: '3.8'
+
+services:
+  web:
+    build: .
+    command: gunicorn -w 4 -b 0.0.0.0:8000 app:create_app()
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    environment:
+      SECRET_KEY: ${SECRET_KEY:-change-me}
+      DATABASE_URL: ${DATABASE_URL:-postgresql://resis:resispass@db:5432/resis}
+      S3_BUCKET: ${S3_BUCKET:-resis-uploads}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-minioadmin}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-minioadmin}
+      S3_ENDPOINT: ${S3_ENDPOINT:-http://minio:9000}
+    depends_on:
+      - db
+      - minio
+    volumes:
+      - .:/app
+    healthcheck:
+      test: ["CMD-SHELL", "python -c 'import urllib.request,sys; sys.exit(0) if urllib.request.urlopen(\"http://127.0.0.1:8000/ready\").getcode()==200 else sys.exit(1)'"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+
+  db:
+    image: postgres:15
+    restart: always
+    environment:
+      POSTGRES_USER: resis
+      POSTGRES_PASSWORD: resispass
+      POSTGRES_DB: resis
+    ports:
+      - "5432:5432"
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U resis -d resis"]
+      interval: 10s
+      retries: 5
+
+  minio:
+    image: minio/minio:latest
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio_data:/data
+
+  nginx:
+    image: nginx:stable-alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./deploy/nginx.dev.conf:/etc/nginx/conf.d/resis.conf:ro
+      - letsencrypt:/etc/letsencrypt
+      - letsencrypt-webroot:/var/www/letsencrypt
+      - ./:/app:ro
+    depends_on:
+      - web
+    restart: always
+
+  certbot:
+    image: certbot/certbot
+    volumes:
+      - letsencrypt:/etc/letsencrypt
+      - letsencrypt-webroot:/var/www/letsencrypt
+      - ./:/app:ro
+    environment:
+      # Set these in your .env or environment before running compose
+      # e.g. CERTBOT_EMAIL=you@example.com CERTBOT_DOMAINS=example.com
+      CERTBOT_EMAIL: ${CERTBOT_EMAIL:-admin@example.com}
+      CERTBOT_DOMAINS: ${CERTBOT_DOMAINS:-example.com}
+    # Default command to obtain/renew a certificate using the webroot plugin.
+    # Use docker-compose run certbot to execute this interactively, for example:
+    # docker compose run --rm certbot renew
+    command: >
+      sh -c "certbot certonly --webroot --webroot-path /var/www/letsencrypt \
+      --email \"${CERTBOT_EMAIL}\" --agree-tos --no-eff-email \
+      -d \"${CERTBOT_DOMAINS}\" --non-interactive || true"
+
+volumes:
+  db_data:
+  minio_data:
+  letsencrypt:
+  letsencrypt-webroot:

@@ -1,0 +1,11 @@
+{% extends 'base.html' %}
+
+{% block title %}Inicio{% endblock %}
+
+{% block content %}
+  <div class="py-5 text-center">
+    <h1 class="display-5">Bienvenido</h1>
+    <p class="lead">Aplicación inicial creada.</p>
+    <p><a class="btn btn-primary" href="{{ url_for('auth_bp.login') }}">Iniciar sesión</a></p>
+  </div>
+{% endblock %}

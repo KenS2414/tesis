@@ -1,0 +1,51 @@
+endpoint,methods,auth_required,roles,description,template
+/health,GET,no,anonymous,Health check with database probe,
+/ready,GET,no,anonymous,Readiness check for DB and optional S3,
+/brand-logo,GET,no,anonymous,Serve custom brand logo or fallback,
+/,GET,no,anonymous,Landing route that redirects to /dashboard when authenticated or /login otherwise,
+/login,GET/POST,no,anonymous,Authenticate user session,templates/login.html
+/logout,GET,yes,user,Close current session,
+/register,GET/POST,no,anonymous,Register student user and linked student profile,templates/register.html
+/dashboard,GET,yes,user,Role-based dashboard,templates/dashboard.html
+/students,GET,yes,user,Canonical students list path (framework redirect to /students/),templates/students/list.html
+/students/new,GET/POST,yes,admin|super_admin,Create new student profile with optional linked credentials,templates/students/form.html
+/students/<int:student_id>/edit,GET/POST,yes,admin|super_admin,Edit student profile,templates/students/form.html
+/students/<int:student_id>/delete,POST,yes,admin|super_admin,Delete student profile,
+/payments,GET,yes,admin|student,List payments for current student or redirect admin to review,templates/payments/list.html
+/payments/new,GET/POST,yes,student,Submit payment with proof upload,templates/payments/form.html
+/admin/payments,GET,yes,admin|super_admin,List all payment submissions for review,templates/payments/admin_list.html
+/admin/payments/<int:payment_id>/approve,POST,yes,admin|super_admin,Approve payment,
+/admin/payments/<int:payment_id>/reject,POST,yes,admin|super_admin,Reject payment,
+/students/,GET,yes,user,List students with search and pagination,templates/students/list.html
+/students/<int:student_id>,GET,yes,user,Student detail with role-based visibility,templates/students/detail.html
+/students/<int:student_id>/add-grade,POST,yes,teacher|admin|super_admin,Add grade for a student,
+/students/subjects/new,GET/POST,yes,admin|super_admin,Create subject and assign teacher,templates/students/subject_form.html
+/students/subjects/<int:subject_id>/edit,GET/POST,yes,admin|super_admin,Edit subject data and teacher assignment,templates/students/subject_form.html
+/students/subjects,GET,yes,admin|super_admin,List and filter subjects,templates/students/subjects_list.html
+/students/subjects/<int:subject_id>,GET,yes,user,Subject detail for student or teacher/admin views,templates/students/subject_detail.html
+/students/subjects/<int:subject_id>/delete,POST,yes,admin|super_admin,Delete subject,
+/students/users/<int:user_id>/role,POST,yes,admin|super_admin,Change a user role,
+/students/users,GET,yes,admin|super_admin,List users,templates/students/users_list.html
+/students/users/new-teacher,GET/POST,yes,admin|super_admin,Create teacher account,templates/students/teacher_form.html
+/students/grades/<int:grade_id>/edit,GET/POST,yes,teacher|admin|super_admin,Edit grade,templates/students/grade_form.html
+/students/grades/<int:grade_id>/delete,POST,yes,teacher|admin|super_admin,Delete grade,
+/students/reports/gradebook,GET,yes,teacher|admin|super_admin,Download gradebook report as PDF,
+/students/grades,POST,yes,teacher|admin|super_admin,Create grade via JSON API,
+/students/grades/student/<int:student_id>,GET,yes,user,List student grades grouped by subject and period,
+/students/grades/subject/<int:subject_id>/report,GET,yes,teacher|admin|super_admin,Subject performance report,
+/students/reports/payment/<int:payment_id>,GET,yes,admin|super_admin,Download payment report as PDF,
+/students/teacher/subjects,GET,yes,teacher,List subjects assigned to current teacher,templates/students/teacher_subjects.html
+/students/import,POST,yes,admin|super_admin,Import students/subjects/grades from CSV,
+/students/export.csv,GET,yes,admin|super_admin,Export students/subjects/grades to CSV,
+/students/gradebook/<int:subject_id>/bulk_update,POST,yes,teacher|admin|super_admin,Bulk create/update grades,
+/students/gradebook/<int:subject_id>.csv,GET,yes,teacher|admin|super_admin,Export gradebook CSV by subject,
+/students/attendance/bulk,POST,yes,teacher|admin|super_admin,Bulk attendance registration,
+/students/attendance/student/<int:student_id>,GET,yes,user,List attendance records by student,
+/students/attendance/<int:attendance_id>/justify,PATCH,yes,admin|super_admin,Justify an absence record,
+/finance/student/<int:student_id>/status,GET,yes,user,Get student financial status,
+/finance/invoice/generate-monthly,POST,yes,admin|treasury,Generate monthly invoices,
+/finance/payment/register,POST,yes,admin|treasury|student_owner,Register payment record and optional proof,
+/enrollment/register,POST,yes,admin|enrollment,Register student enrollment,
+/enrollment/section/<int:section_id>/students,GET,yes,user,List active students in section,
+/enrollment/history/student/<int:student_id>,GET,yes,user,Enrollment history by student,
+static/uploads/*,GET/POST,yes,user,Local upload path used only when S3 is not configured,static/uploads/

@@ -1,0 +1,38 @@
+{% extends 'base.html' %}
+
+{% block title %}Iniciar Sesión{% endblock %}
+
+{% block content %}
+<div class="auth-container">
+    <div class="card auth-card">
+        <div class="auth-header text-center">
+             <img src="{{ brand_logo_url }}?v={{ ASSET_VERSION }}" alt="La Salle Logo" class="auth-logo mx-auto d-block">
+             <h2 class="h4 mt-3">Bienvenido</h2>
+             <p class="text-muted">Inicia sesión para continuar</p>
+        </div>
+
+        <form method="post" action="{{ url_for('auth_bp.login') }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+
+            <div class="mb-3">
+              <label for="username" class="form-label">Usuario</label>
+              <input id="username" name="username" class="form-control" required placeholder="Tu nombre de usuario" autofocus>
+            </div>
+
+            <div class="mb-4">
+              <label for="password" class="form-label">Contraseña</label>
+              <input id="password" name="password" type="password" class="form-control" required placeholder="Tu contraseña">
+            </div>
+
+            <div class="d-grid gap-2 mb-3">
+              <button type="submit" class="btn btn-primary btn-lg">Entrar</button>
+            </div>
+
+            <div class="text-center">
+              <span class="text-muted small">¿No tienes cuenta?</span>
+              <a href="{{ url_for('auth_bp.register') }}" style="color: var(--brand-blue); font-weight: 600; text-decoration: none;">Regístrate aquí</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
