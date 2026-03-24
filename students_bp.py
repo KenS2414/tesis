@@ -42,16 +42,13 @@ YEAR_GROUP_OPTIONS = (
     '5to Año',
 )
 
-PASSING_SCORE_10 = 6.0
-PASSING_SCORE_100 = 60.0
-
+PASSING_SCORE_20 = 10.0
 
 def _is_passing_average(avg_value):
     if avg_value is None:
         return False
     value = float(avg_value)
-    threshold = PASSING_SCORE_10 if value <= 10.0 else PASSING_SCORE_100
-    return value >= threshold
+    return value >= PASSING_SCORE_20
 
 
 def _promote_student_if_ready(student):
@@ -345,13 +342,13 @@ def add_grade(student_id):
         flash('Materia no encontrada.', 'warning')
         return redirect(url_for('students_bp.student_detail', student_id=student.id))
 
-    # validate score (optional but, if present, must be numeric and 0-100)
+    # validate score (optional but, if present, must be numeric and 0-20)
     score_val = None
     if score:
         try:
             score_val = float(score)
-            if score_val < 0 or score_val > 100:
-                flash('La nota debe estar entre 0 y 100.', 'warning')
+            if score_val < 0 or score_val > 20:
+                flash('La nota debe estar entre 0 y 20.', 'warning')
                 return redirect(url_for('students_bp.student_detail', student_id=student.id))
         except ValueError:
             flash('Formato de nota inválido.', 'warning')
@@ -675,8 +672,8 @@ def edit_grade(grade_id):
         try:
             if score:
                 val = float(score)
-                if val < 0 or val > 100:
-                    flash('La nota debe estar entre 0 y 100.', 'warning')
+                if val < 0 or val > 20:
+                    flash('La nota debe estar entre 0 y 20.', 'warning')
                     return render_template('students/grade_form.html', grade=g)
                 g.score = val
             else:
@@ -736,7 +733,7 @@ def report_gradebook():
 @requires_roles(UserRole.TEACHER, UserRole.ADMIN)
 def create_grade():
     """Create a grade via JSON payload. Expected JSON keys:
-    student_id, subject_id, assessment_category_id (optional), value (0-10), periodo_id (optional), comment
+    student_id, subject_id, assessment_category_id (optional), value (0-20), periodo_id (optional), comment
     """
     data = request.get_json() or {}
     sid = data.get('student_id')
@@ -756,14 +753,14 @@ def create_grade():
     # only allow teacher of subject or admin
     if current_user.role != UserRole.ADMIN and subject.teacher_id and subject.teacher_id != current_user.id:
         return ({'error': 'forbidden: not teacher of this subject'}, 403)
-    # validate value 0-10
+    # validate value 0-20
     if val is not None:
         try:
             v = float(val)
         except Exception:
             return ({'error': 'invalid value'}, 400)
-        if v < 0 or v > 10:
-            return ({'error': 'value must be between 0 and 10'}, 400)
+        if v < 0 or v > 20:
+            return ({'error': 'value must be between 0 and 20'}, 400)
     else:
         v = None
     # validate category and periodo existence when provided
@@ -835,7 +832,7 @@ def subject_report(subject_id):
         .all()
     )
     report = {'subject_id': subj.id, 'subject_name': subj.name, 'total': len(students), 'passed': 0, 'failed': 0, 'details': []}
-    PASSING_SCORE = 6.0
+    PASSING_SCORE = 10.0
     for st in students:
         avg = st.weighted_average(subj.id)
         passed = False

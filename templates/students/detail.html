@@ -32,7 +32,7 @@
   <div class="card mb-3">
     <div class="card-body">
       <h5 class="card-title">Materias</h5>
-      {% if current_user.is_authenticated and current_user.role in ['admin', 'super_admin'] %}
+      {% if current_user.is_authenticated and current_user.role == 'super_admin' %}
       <div class="mb-2"><a class="btn btn-sm btn-primary" href="{{ url_for('students_bp.new_subject') }}">Crear nueva materia</a></div>
       {% endif %}
       <ul class="list-group">
@@ -40,7 +40,7 @@
           <li class="list-group-item d-flex justify-content-between align-items-center">
             <div>{{ subj.name }} {% if subj.code %} <small class="text-muted">({{ subj.code }})</small>{% endif %}</div>
             <div>
-              {% if current_user.is_authenticated and current_user.role in ['admin', 'super_admin'] %}
+              {% if current_user.is_authenticated and current_user.role == 'super_admin' %}
                 <a class="btn btn-sm btn-outline-primary me-2" href="{{ url_for('students_bp.edit_subject', subject_id=subj.id) }}">Editar</a>
                 <form action="{{ url_for('students_bp.delete_subject', subject_id=subj.id) }}" method="post" class="d-inline">
                   <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
@@ -126,7 +126,7 @@
                         <div>
                           <strong>{{ g.subject.name }}</strong>
                           {% if g.score is not none %}
-                            <span class="badge {% if g.score >= 6.0 %}bg-success{% else %}bg-danger{% endif %} ms-2">{{ g.score }}</span>
+                            <span class="badge {% if g.score >= 10.0 %}bg-success{% else %}bg-danger{% endif %} ms-2">{{ g.score }}</span>
                           {% else %}
                             <span class="badge bg-secondary ms-2">Sin calificar</span>
                           {% endif %}

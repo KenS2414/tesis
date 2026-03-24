@@ -9,7 +9,7 @@
       <input readonly class="form-control" value="{{ grade.subject.name if grade and grade.subject else '' }}" />
     </div>
     <div class="col-md-2">
-      <label for="score" class="form-label">Nota (0-100)</label>
+      <label for="score" class="form-label">Nota (0-20)</label>
       <input name="score" id="score" class="form-control" value="{{ grade.score if grade.score is not none else '' }}" />
     </div>
     <div class="col-md-2">
