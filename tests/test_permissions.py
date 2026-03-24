@@ -73,3 +73,60 @@ def test_teacher_can_add_grade_but_student_cannot(client):
     assert resp.status_code == 200
     resp = client.post(f'/students/{student.id}/add-grade', data={'subject_id': s.id, 'score': '80'}, follow_redirects=False)
     assert resp.status_code == 403
+
+def test_student_cannot_approve_payment(client):
+    from models import Payment
+    student_user = create_user('student3@example.com', 'studpass', role='student')
+    student = Student(first_name='A', last_name='B', email='student3@example.com')
+    db.session.add(student)
+    db.session.commit()
+
+    payment = Payment(student_id=student.id, amount=100)
+    db.session.add(payment)
+    db.session.commit()
+
+    resp = client.post('/login', data={'username': 'student3@example.com', 'password': 'studpass'}, follow_redirects=True)
+    assert resp.status_code == 200
+
+    resp = client.post(f'/admin/payments/{payment.id}/approve', follow_redirects=False)
+    # Admin routes redirect to dashboard if not admin with a flash message, which is a 302
+    assert resp.status_code == 302
+    assert '/dashboard' in resp.headers.get('Location', '')
+
+
+def test_teacher_cannot_access_academic_years(client):
+    teacher = create_user('teacher2@example.com', 'teachpass', role='teacher')
+
+    resp = client.post('/login', data={'username': 'teacher2@example.com', 'password': 'teachpass'}, follow_redirects=True)
+    assert resp.status_code == 200
+
+    resp = client.get('/admin/academic-years', follow_redirects=False)
+    assert resp.status_code == 403
+
+
+def test_teacher_cannot_grade_unassigned_subject(client):
+    teacher1 = create_user('teacher1@example.com', 'teachpass', role='teacher')
+    teacher2 = create_user('teacher2@example.com', 'teachpass', role='teacher')
+
+    student = Student(first_name='S', last_name='T', email='st@example.com')
+    db.session.add(student)
+    db.session.commit()
+
+    # assign subject to teacher2
+    s = Subject(name='Physics', teacher_id=teacher2.id)
+    db.session.add(s)
+    db.session.commit()
+
+    # login as teacher1
+    resp = client.post('/login', data={'username': 'teacher1@example.com', 'password': 'teachpass'}, follow_redirects=True)
+    assert resp.status_code == 200
+
+    # try to grade subject owned by teacher2
+    resp = client.post('/students/grades', json={
+        'student_id': student.id,
+        'subject_id': s.id,
+        'value': 15,
+        'comment': 'Good'
+    }, follow_redirects=False)
+
+    assert resp.status_code == 403

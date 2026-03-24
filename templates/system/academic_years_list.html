@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block title %}Años Académicos{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h2 class="h4 mb-0">Configuración de Años Académicos</h2>
+  <a href="{{ url_for('system_bp.create_academic_year') }}" class="btn btn-primary">Crear Año Académico</a>
+</div>
+
+<div class="table-responsive">
+  <table class="table table-striped align-middle">
+    <thead>
+      <tr>
+        <th>Nombre</th>
+        <th>Fecha de Inicio</th>
+        <th>Fecha de Fin</th>
+        <th>Estado</th>
+        <th>Acciones</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for year in years %}
+      <tr>
+        <td>{{ year.nombre }}</td>
+        <td>{{ year.fecha_inicio }}</td>
+        <td>{{ year.fecha_fin }}</td>
+        <td>
+          <span class="badge {% if year.status.name == 'OPEN' %}bg-success{% elif year.status.name == 'CLOSED' %}bg-warning{% else %}bg-secondary{% endif %}">
+            {{ year.status.name }}
+          </span>
+        </td>
+        <td>
+          <form method="POST" action="{{ url_for('system_bp.set_academic_year_status', year_id=year.id) }}" class="d-inline-flex gap-2">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <select name="status" class="form-select form-select-sm" required>
+              <option value="OPEN" {% if year.status.name == 'OPEN' %}selected{% endif %}>OPEN</option>
+              <option value="CLOSED" {% if year.status.name == 'CLOSED' %}selected{% endif %}>CLOSED</option>
+              <option value="ARCHIVED" {% if year.status.name == 'ARCHIVED' %}selected{% endif %}>ARCHIVED</option>
+            </select>
+            <button type="submit" class="btn btn-sm btn-outline-primary">Actualizar</button>
+          </form>
+        </td>
+      </tr>
+      {% else %}
+      <tr>
+        <td colspan="5" class="text-center text-muted">No hay años académicos registrados.</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}
