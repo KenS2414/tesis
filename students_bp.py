@@ -629,33 +629,39 @@ def list_users():
     return render_template('students/users_list.html', users=users)
 
 
-@students_bp.route('/users/new-teacher', methods=['GET', 'POST'])
+@students_bp.route('/users/new-staff', methods=['GET', 'POST'])
 @login_required
 @requires_roles(UserRole.SUPER_ADMIN)
-def create_teacher_user():
+def create_staff_user():
+    roles = [UserRole.TEACHER, UserRole.ADMIN, UserRole.ENROLLMENT, UserRole.TREASURY]
     if request.method == 'POST':
         username = (request.form.get('username') or '').strip()
         password = request.form.get('password') or ''
+        role = request.form.get('role') or UserRole.TEACHER
 
         if not username or not password:
             flash('Usuario y contraseña son obligatorios.', 'warning')
-            return render_template('students/teacher_form.html')
+            return render_template('students/staff_form.html', roles=roles)
+
+        if role not in roles:
+            flash('Rol inválido.', 'warning')
+            return render_template('students/staff_form.html', roles=roles)
 
         if User.query.filter_by(username=username).first():
             flash('El usuario ya existe.', 'warning')
-            return render_template('students/teacher_form.html')
+            return render_template('students/staff_form.html', roles=roles)
 
-        teacher_user = User(
+        staff_user = User(
             username=username,
             password_hash=generate_password_hash(password),
-            role=UserRole.TEACHER,
+            role=role,
         )
-        db.session.add(teacher_user)
+        db.session.add(staff_user)
         db.session.commit()
-        flash('Perfil de docente creado correctamente.', 'success')
+        flash(f'Perfil de {role} creado correctamente.', 'success')
         return redirect(url_for('students_bp.list_users'))
 
-    return render_template('students/teacher_form.html')
+    return render_template('students/staff_form.html', roles=roles)
 
 
 @students_bp.route('/grades/<int:grade_id>/edit', methods=['GET', 'POST'])
