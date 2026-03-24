@@ -7,6 +7,55 @@ Breve guía para levantar staging, ejecutar migraciones y realizar backups/resto
 - Si encuentras pasos distintos en otros documentos, prioriza este archivo.
 - Documentos resumidos que remiten aquí: `README.md`, `README_LOCAL.md`, `deploy/README_DEPLOY.md`.
 
+## Checklist operativo (pre-release y despliegue)
+
+Usar esta lista en cada salida a staging/producción. Marcar cada punto solo cuando quede validado.
+
+### A) Pre-release (antes de desplegar)
+- [ ] Variables de entorno críticas presentes: `SECRET_KEY`, `DATABASE_URL`, `S3_BUCKET`, `S3_ENDPOINT`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`.
+- [ ] `FLASK_APP=app:create_app` en entorno de ejecución.
+- [ ] Backup de base de datos ejecutado y verificado.
+- [ ] Validación rápida de pruebas sin integración:
+	- `pytest -q -m "not integration"`
+- [ ] Validación de pruebas de integración (si el entorno lo permite):
+	- `pytest -q -m integration`
+- [ ] Confirmar migraciones pendientes y plan de rollback documentado.
+
+### B) Ventana de despliegue
+- [ ] Levantar/actualizar servicios del entorno.
+- [ ] Aplicar migraciones:
+	- `flask db upgrade`
+- [ ] Confirmar salud de aplicación:
+	- `GET /health` responde `ok`.
+	- `GET /ready` responde `ready`.
+- [ ] Verificar conectividad a almacenamiento S3/MinIO con carga/lectura de un archivo de prueba.
+- [ ] Verificar login con usuario administrador y acceso al dashboard.
+
+### C) Verificación funcional mínima (smoke test)
+- [ ] Crear/editar estudiante.
+- [ ] Asignar docente a materia.
+- [ ] Registrar al menos una nota por lapso.
+- [ ] Registrar/consultar un pago.
+- [ ] Generar un reporte PDF básico.
+
+### D) Post-deploy inmediato
+- [ ] Revisar logs de aplicación sin errores críticos repetitivos.
+- [ ] Revisar errores 5xx en proxy/app.
+- [ ] Confirmar que no hubo regresión de permisos por rol (admin/docente/estudiante).
+- [ ] Confirmar que el flujo de uploads sigue operativo.
+
+### E) Rollback (si falla el despliegue)
+- [ ] Detener cambios y comunicar incidente.
+- [ ] Restaurar versión previa de servicio (gunicorn/nginx) según entorno.
+- [ ] Restaurar backup de base de datos si hubo cambios irreversibles.
+- [ ] Revalidar `GET /health` y login admin tras recuperación.
+
+### Evidencia sugerida por release
+- Fecha/hora de inicio y fin de ventana.
+- Responsable de ejecución.
+- Resultado de comandos clave (`flask db upgrade`, pruebas, health/ready).
+- Incidentes encontrados y resolución aplicada.
+
 ## Prerrequisitos
 - Docker Desktop instalado y funcionando
 - Variables de entorno (en `env` o en el host): `SECRET_KEY`, `DATABASE_URL` (opcional para Postgres), `S3_BUCKET`, `S3_ENDPOINT`, `S3_ACCESS_KEY`, `S3_SECRET_KEY` (si aplica)
