@@ -42,15 +42,18 @@ class PaymentRegisterSchema(Schema):
     comprobante_key = fields.Str(allow_none=True)
 
 
-def _apply_scholarship(student_id, amount: Decimal) -> Decimal:
-    sch = (
-        db.session.query(Scholarship)
-        .filter(Scholarship.student_id == student_id, Scholarship.activa == True)
-        .first()
-    )
-    if not sch:
+_MISSING = object()
+
+def _apply_scholarship(student_id, amount: Decimal, scholarship=_MISSING) -> Decimal:
+    if scholarship is _MISSING:
+        scholarship = (
+            db.session.query(Scholarship)
+            .filter(Scholarship.student_id == student_id, Scholarship.activa == True)
+            .first()
+        )
+    if not scholarship:
         return amount
-    discount = (Decimal(sch.porcentaje_descuento) / Decimal(100)) * amount
+    discount = (Decimal(scholarship.porcentaje_descuento) / Decimal(100)) * amount
     return (amount - discount).quantize(Decimal('0.01'))
 
 
@@ -91,27 +94,45 @@ def generate_monthly_invoices():
     created = 0
     today = date.today()
     default_due = today + timedelta(days=30)
+
+    # Pre-calculate fees
+    fee_total = Decimal('0.00')
+    fees = FeeCategory.query.all()
+    for f in fees:
+        fee_total += Decimal(f.monto_base)
+
+    if fee_total == Decimal('0.00'):
+        return jsonify({'status': 'ok', 'created_invoices': 0})
+
+    # Bulk fetch scholarships and accounts for performance
+    student_ids = [st.id for st in students]
+
+    scholarships = Scholarship.query.filter(
+        Scholarship.student_id.in_(student_ids),
+        Scholarship.activa == True
+    ).all()
+    scholarship_map = {sch.student_id: sch for sch in scholarships}
+
+    accounts = StudentAccount.query.filter(StudentAccount.student_id.in_(student_ids)).all()
+    account_map = {acct.student_id: acct for acct in accounts}
+
     try:
-        with db.session.begin():
-            for st in students:
-                # compute base amount: sum of all fee categories (simplified)
-                fee_total = Decimal('0.00')
-                fees = FeeCategory.query.all()
-                for f in fees:
-                    fee_total += Decimal(f.monto_base)
-                if fee_total == Decimal('0.00'):
-                    continue
-                total_after_discount = _apply_scholarship(st.id, fee_total)
-                inv = Invoice(student_id=st.id, monto_total=total_after_discount, fecha_emision=today, fecha_vencimiento=default_due, status=InvoiceStatus.PENDING)
-                db.session.add(inv)
-                # ensure student account exists
-                acct = StudentAccount.query.filter_by(student_id=st.id).first()
-                if not acct:
-                    acct = StudentAccount(student_id=st.id, balance_total=total_after_discount)
-                    db.session.add(acct)
-                else:
-                    acct.balance_total = (Decimal(acct.balance_total) + total_after_discount)
-                created += 1
+        for st in students:
+            sch = scholarship_map.get(st.id) # returns None if no scholarship
+            total_after_discount = _apply_scholarship(st.id, fee_total, scholarship=sch)
+            inv = Invoice(student_id=st.id, monto_total=total_after_discount, fecha_emision=today, fecha_vencimiento=default_due, status=InvoiceStatus.PENDING)
+            db.session.add(inv)
+            # ensure student account exists
+            acct = account_map.get(st.id)
+            if not acct:
+                acct = StudentAccount(student_id=st.id, balance_total=total_after_discount)
+                db.session.add(acct)
+                # Important: add newly created account to the map so subsequent loop operations on this student reuse it (though IDs shouldn't duplicate in `students`)
+                account_map[st.id] = acct
+            else:
+                acct.balance_total = (Decimal(acct.balance_total) + total_after_discount)
+            created += 1
+        db.session.commit()
         return jsonify({'status': 'ok', 'created_invoices': created})
     except Exception as e:
         db.session.rollback()
