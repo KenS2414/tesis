@@ -11,7 +11,7 @@ def test_student_promotes_when_passing_all_subjects_of_year(super_admin_client, 
 
     resp1 = super_admin_client.post(
         f'/students/{student.id}/add-grade',
-        data={'subject_id': s1.id, 'score': '80', 'term': '2026-1'},
+        data={'subject_id': s1.id, 'score': '16', 'term': '2026-1'},
         follow_redirects=True,
     )
     assert resp1.status_code == 200
@@ -20,7 +20,7 @@ def test_student_promotes_when_passing_all_subjects_of_year(super_admin_client, 
 
     resp2 = super_admin_client.post(
         f'/students/{student.id}/add-grade',
-        data={'subject_id': s2.id, 'score': '75', 'term': '2026-1'},
+        data={'subject_id': s2.id, 'score': '15', 'term': '2026-1'},
         follow_redirects=True,
     )
     assert resp2.status_code == 200
@@ -37,12 +37,12 @@ def test_student_does_not_promote_with_failing_subject(super_admin_client, app):
 
     super_admin_client.post(
         f'/students/{student.id}/add-grade',
-        data={'subject_id': s1.id, 'score': '80', 'term': '2026-1'},
+        data={'subject_id': s1.id, 'score': '16', 'term': '2026-1'},
         follow_redirects=True,
     )
     super_admin_client.post(
         f'/students/{student.id}/add-grade',
-        data={'subject_id': s2.id, 'score': '40', 'term': '2026-1'},
+        data={'subject_id': s2.id, 'score': '8', 'term': '2026-1'},
         follow_redirects=True,
     )
 

@@ -9,7 +9,7 @@
 </div>
 
 <div class="row g-4">
-    {% if user.role not in ['teacher', 'student'] %}
+    {% if user.role not in ['teacher', 'student', 'admin'] %}
     <!-- Estudiantes Card -->
     <div class="col-md-6 col-lg-4">
         <div class="card h-100 border-0 shadow-sm hover-card">
@@ -102,7 +102,7 @@
     </div>
     {% endif %}
 
-    {% if current_user.is_authenticated and current_user.role in ['admin', 'super_admin'] %}
+    {% if current_user.is_authenticated and current_user.role == 'super_admin' %}
     <!-- Admin Materias Card -->
     <div class="col-md-6 col-lg-4">
         <div class="card h-100 border-0 shadow-sm hover-card" style="border-top: 4px solid #0ea5e9 !important;">
@@ -135,6 +135,26 @@
                 <h3 class="h5 card-title">Usuarios</h3>
                 <p class="card-text text-muted small">Administra cuentas y crea perfiles de docentes.</p>
                 <a href="{{ url_for('students_bp.list_users') }}" class="btn btn-primary w-100 mt-2">Gestionar Usuarios</a>
+            </div>
+        </div>
+    </div>
+
+    {% endif %}
+
+    {% if current_user.is_authenticated and current_user.role in ['admin', 'super_admin'] %}
+    <!-- Admin Deudores Card -->
+    <div class="col-md-6 col-lg-4">
+        <div class="card h-100 border-0 shadow-sm hover-card" style="border-top: 4px solid #dc3545 !important;">
+            <div class="card-body text-center p-4">
+                <div class="mb-3 text-danger">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M12 2v20"></path>
+                        <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+                    </svg>
+                </div>
+                <h3 class="h5 card-title">Deudores</h3>
+                <p class="card-text text-muted small">Visualiza y gestiona los estudiantes con deudas pendientes.</p>
+                <a href="{{ url_for('payments_admin_bp.admin_debts') }}" class="btn btn-danger w-100 mt-2">Ver Deudores</a>
             </div>
         </div>
     </div>
