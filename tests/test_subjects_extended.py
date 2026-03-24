@@ -1,11 +1,11 @@
 from werkzeug.security import generate_password_hash
 
 
-def test_create_subject_with_extended_fields(admin_client, app):
+def test_create_subject_with_extended_fields(super_admin_client, app):
     from extensions import db
     from models import Subject
 
-    client = admin_client
+    client = super_admin_client
     data = {
         'name': 'Física Moderna',
         'code': 'PHY201',
@@ -26,8 +26,8 @@ def test_create_subject_with_extended_fields(admin_client, app):
     assert 'moderna' in (s.description or '').lower()
 
 
-def test_create_subject_redirects_to_subjects_list(admin_client, app):
-    resp = admin_client.post(
+def test_create_subject_redirects_to_subjects_list(super_admin_client, app):
+    resp = super_admin_client.post(
         '/students/subjects/new',
         data={
             'name': 'Arte',
@@ -41,12 +41,12 @@ def test_create_subject_redirects_to_subjects_list(admin_client, app):
     assert resp.headers['Location'].endswith('/students/subjects')
 
 
-def test_edit_subject_extended_fields(admin_client, app, sample_subjects):
+def test_edit_subject_extended_fields(super_admin_client, app, sample_subjects):
     from extensions import db
     from models import Subject
 
     subj = sample_subjects[0]
-    client = admin_client
+    client = super_admin_client
     data = {
         'name': 'Matemáticas Avanzadas',
         'code': 'MATH201',
@@ -66,10 +66,10 @@ def test_edit_subject_extended_fields(admin_client, app, sample_subjects):
     assert s.credits == 6
 
 
-def test_edit_subject_redirects_to_subjects_list(admin_client, app, sample_subjects):
+def test_edit_subject_redirects_to_subjects_list(super_admin_client, app, sample_subjects):
     subj = sample_subjects[0]
 
-    resp = admin_client.post(
+    resp = super_admin_client.post(
         f'/students/subjects/{subj.id}/edit',
         data={
             'name': subj.name,
@@ -83,7 +83,7 @@ def test_edit_subject_redirects_to_subjects_list(admin_client, app, sample_subje
     assert resp.headers['Location'].endswith('/students/subjects')
 
 
-def test_list_subjects_search_and_filter(admin_client, app):
+def test_list_subjects_search_and_filter(super_admin_client, app):
     from extensions import db
     from models import Subject
 
@@ -94,7 +94,7 @@ def test_list_subjects_search_and_filter(admin_client, app):
     db.session.add_all([s1, s2, s3])
     db.session.commit()
 
-    client = admin_client
+    client = super_admin_client
     # filter by category
     resp = client.get('/students/subjects?category=Ciencias')
     assert resp.status_code == 200
@@ -109,7 +109,7 @@ def test_list_subjects_search_and_filter(admin_client, app):
     assert 'Filosofía' in resp2.data.decode('utf-8')
 
 
-def test_list_subjects_unassigned_filter_and_teacher_load(admin_client, app):
+def test_list_subjects_unassigned_filter_and_teacher_load(super_admin_client, app):
     from extensions import db
     from models import Subject, User
 
@@ -126,7 +126,7 @@ def test_list_subjects_unassigned_filter_and_teacher_load(admin_client, app):
     db.session.add_all([assigned, unassigned])
     db.session.commit()
 
-    resp = admin_client.get('/students/subjects?unassigned=1')
+    resp = super_admin_client.get('/students/subjects?unassigned=1')
     assert resp.status_code == 200
     body = resp.data.decode('utf-8')
 
@@ -137,7 +137,7 @@ def test_list_subjects_unassigned_filter_and_teacher_load(admin_client, app):
     assert '>1<' in body
 
 
-def test_list_subjects_grouped_by_year_group(admin_client, app):
+def test_list_subjects_grouped_by_year_group(super_admin_client, app):
     from extensions import db
     from models import Subject
 
@@ -147,7 +147,7 @@ def test_list_subjects_grouped_by_year_group(admin_client, app):
     ])
     db.session.commit()
 
-    resp = admin_client.get('/students/subjects')
+    resp = super_admin_client.get('/students/subjects')
     assert resp.status_code == 200
     body = resp.data.decode('utf-8')
 

@@ -61,3 +61,15 @@ def admin_payment_reject(payment_id):
     db.session.commit()
     flash("Pago rechazado.", "info")
     return redirect(url_for("payments_admin_bp.admin_payments"))
+
+
+@payments_admin_bp.route("/admin/debts")
+@login_required
+def admin_debts():
+    if not _is_admin_user():
+        flash("Acceso denegado.", "danger")
+        return redirect(url_for("main_bp.dashboard"))
+    from models import StudentAccount
+    # Fetch accounts with balance > 0
+    accounts = StudentAccount.query.filter(StudentAccount.balance_total > 0).all()
+    return render_template("payments/admin_debts.html", accounts=accounts)

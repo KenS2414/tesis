@@ -1,8 +1,8 @@
 from models import User
 
 
-def test_admin_can_create_teacher_user(admin_client, app):
-    resp = admin_client.post(
+def test_admin_can_create_teacher_user(super_admin_client, app):
+    resp = super_admin_client.post(
         "/students/users/new-teacher",
         data={"username": "teacher_new", "password": "teacherpass123"},
         follow_redirects=True,
@@ -16,14 +16,14 @@ def test_admin_can_create_teacher_user(admin_client, app):
         assert created.role == "teacher"
 
 
-def test_admin_cannot_create_duplicate_teacher_user(admin_client, app):
-    admin_client.post(
+def test_admin_cannot_create_duplicate_teacher_user(super_admin_client, app):
+    super_admin_client.post(
         "/students/users/new-teacher",
         data={"username": "teacher_dup", "password": "pass1"},
         follow_redirects=True,
     )
 
-    resp = admin_client.post(
+    resp = super_admin_client.post(
         "/students/users/new-teacher",
         data={"username": "teacher_dup", "password": "pass2"},
         follow_redirects=True,

@@ -29,6 +29,12 @@ from werkzeug.security import generate_password_hash
 students_bp = Blueprint('students_bp', __name__, url_prefix='/students')
 
 YEAR_GROUP_OPTIONS = (
+    '1er Grado',
+    '2do Grado',
+    '3er Grado',
+    '4to Grado',
+    '5to Grado',
+    '6to Grado',
     '1er Año',
     '2do Año',
     '3er Año',
@@ -114,7 +120,7 @@ def list_students():
 
 @students_bp.route('/new', methods=['GET', 'POST'])
 @login_required
-@requires_roles(UserRole.ADMIN)
+@requires_roles(UserRole.SUPER_ADMIN)
 def student_create():
     subjects = Subject.query.order_by(Subject.name).all()
     year_group_options = YEAR_GROUP_OPTIONS
@@ -148,14 +154,29 @@ def student_create():
             except ValueError:
                 flash('Formato de fecha inválido. Use YYYY-MM-DD.', 'warning')
                 return render_template('students/form.html', student=None, subjects=subjects, year_group_options=year_group_options)
+
+        cedula = (request.form.get('cedula') or '').strip() or None
+        section = (request.form.get('section') or '').strip() or None
+
         student = Student(
             first_name=first_name,
             last_name=last_name,
             email=email,
             current_year_group=current_year_group,
             dob=dob,
+            cedula=cedula,
+            section=section,
         )
         db.session.add(student)
+        db.session.flush() # flush to get student.id for photo
+
+        photo = request.files.get('photo')
+        if photo and photo.filename:
+            from utils.aws import upload_bytes_to_s3
+            filename = secure_filename(photo.filename)
+            key_name = f"students/{student.id}/photo_{filename}"
+            upload_bytes_to_s3(photo.read(), key_name, content_type=photo.content_type)
+            student.photo_filename = key_name
         if login_username:
             linked_user = User(
                 username=login_username,
@@ -165,18 +186,25 @@ def student_create():
             db.session.add(linked_user)
         db.session.commit()
 
-        # Process selected subjects
-        selected_subjects = request.form.getlist('subjects')
-        if selected_subjects:
-            for sid in selected_subjects:
-                try:
-                    subject_id = int(sid)
-                    # Create empty grade record to link student to subject
-                    grade = Grade(student_id=student.id, subject_id=subject_id, value=None)
-                    db.session.add(grade)
-                except ValueError:
-                    continue
+        # Auto-assign subjects based on current_year_group
+        if current_year_group:
+            subjects_to_assign = Subject.query.filter_by(year_group=current_year_group).all()
+            for subj in subjects_to_assign:
+                grade = Grade(student_id=student.id, subject_id=subj.id, value=None)
+                db.session.add(grade)
             db.session.commit()
+        else:
+            # Fallback to manually selected subjects (if any)
+            selected_subjects = request.form.getlist('subjects')
+            if selected_subjects:
+                for sid in selected_subjects:
+                    try:
+                        subject_id = int(sid)
+                        grade = Grade(student_id=student.id, subject_id=subject_id, value=None)
+                        db.session.add(grade)
+                    except ValueError:
+                        continue
+                db.session.commit()
 
         flash('Estudiante creado.', 'success')
         return redirect(url_for('students_bp.list_students'))
@@ -185,7 +213,7 @@ def student_create():
 
 @students_bp.route('/<int:student_id>/edit', methods=['GET', 'POST'])
 @login_required
-@requires_roles(UserRole.ADMIN)
+@requires_roles(UserRole.SUPER_ADMIN)
 def student_edit(student_id):
     student = db.session.get(Student, student_id)
     if student is None:
@@ -197,10 +225,16 @@ def student_edit(student_id):
         student.last_name = request.form.get('last_name')
         student.email = request.form.get('email')
         current_year_group = (request.form.get('current_year_group') or '').strip() or None
+
+        # If the student already has a year group, it shouldn't be overridden from the form.
+        # It can only advance automatically.
+        if student.current_year_group:
+            current_year_group = student.current_year_group
+
         if current_year_group and current_year_group not in year_group_options:
             flash('Año inválido para el estudiante.', 'warning')
             return render_template('students/form.html', student=student, year_group_options=year_group_options)
-        student.current_year_group = current_year_group
+
         dob_raw = request.form.get('dob')
         if dob_raw:
             try:
@@ -210,6 +244,31 @@ def student_edit(student_id):
                 return render_template('students/form.html', student=student, year_group_options=year_group_options)
         else:
             student.dob = None
+
+        old_year_group = student.current_year_group
+        student.current_year_group = current_year_group
+
+        # If year group was changed (e.g. from empty to a specific year), auto-assign subjects
+        if current_year_group and current_year_group != old_year_group:
+            subjects_to_assign = Subject.query.filter_by(year_group=current_year_group).all()
+            for subj in subjects_to_assign:
+                # Check if grade already exists to avoid duplicates
+                existing_grade = Grade.query.filter_by(student_id=student.id, subject_id=subj.id).first()
+                if not existing_grade:
+                    grade = Grade(student_id=student.id, subject_id=subj.id, value=None)
+                    db.session.add(grade)
+
+        student.cedula = (request.form.get('cedula') or '').strip() or None
+        student.section = (request.form.get('section') or '').strip() or None
+
+        photo = request.files.get('photo')
+        if photo and photo.filename:
+            from utils.aws import upload_bytes_to_s3
+            filename = secure_filename(photo.filename)
+            key_name = f"students/{student.id}/photo_{filename}"
+            upload_bytes_to_s3(photo.read(), key_name, content_type=photo.content_type)
+            student.photo_filename = key_name
+
         db.session.commit()
         flash('Estudiante actualizado.', 'success')
         return redirect(url_for('students_bp.list_students'))
@@ -218,7 +277,7 @@ def student_edit(student_id):
 
 @students_bp.route('/<int:student_id>/delete', methods=['POST'])
 @login_required
-@requires_roles(UserRole.ADMIN)
+@requires_roles(UserRole.SUPER_ADMIN)
 def student_delete(student_id):
     student = db.session.get(Student, student_id)
     if student is None:
@@ -252,7 +311,12 @@ def student_detail(student_id):
         )
     else:
         subjects = Subject.query.order_by(Subject.name).all()
-    grades = Grade.query.filter_by(student_id=student.id).all()
+
+    if student.photo_filename and current_app.config.get("S3_BUCKET"):
+        from utils.aws import get_presigned_url
+        student.photo_filename = get_presigned_url(student.photo_filename)
+
+    grades = Grade.query.filter_by(student_id=student.id).join(Subject).order_by(Subject.year_group, Subject.name).all()
     return render_template('students/detail.html', student=student, subjects=subjects, grades=grades)
 
 
@@ -309,7 +373,7 @@ def add_grade(student_id):
 
 @students_bp.route('/subjects/new', methods=['GET', 'POST'])
 @login_required
-@requires_roles(UserRole.ADMIN)
+@requires_roles(UserRole.SUPER_ADMIN)
 def new_subject():
     teachers = User.query.filter_by(role=UserRole.TEACHER).order_by(User.username).all()
     year_group_options = YEAR_GROUP_OPTIONS
@@ -371,7 +435,7 @@ def new_subject():
 
 @students_bp.route('/subjects/<int:subject_id>/edit', methods=['GET', 'POST'])
 @login_required
-@requires_roles(UserRole.ADMIN)
+@requires_roles(UserRole.SUPER_ADMIN)
 def edit_subject(subject_id):
     s = db.session.get(Subject, subject_id)
     if s is None:
@@ -433,7 +497,7 @@ def edit_subject(subject_id):
 
 @students_bp.route('/subjects')
 @login_required
-@requires_roles(UserRole.ADMIN)
+@requires_roles(UserRole.SUPER_ADMIN)
 def list_subjects():
     # paginated list of subjects with search and category filter
     q = request.args.get('q', type=str, default=None)
@@ -519,7 +583,7 @@ def subject_detail(subject_id):
 
 @students_bp.route('/subjects/<int:subject_id>/delete', methods=['POST'])
 @login_required
-@requires_roles(UserRole.ADMIN)
+@requires_roles(UserRole.SUPER_ADMIN)
 def delete_subject(subject_id):
     s = db.session.get(Subject, subject_id)
     if s is None:
@@ -536,7 +600,7 @@ def delete_subject(subject_id):
 
 @students_bp.route('/users/<int:user_id>/role', methods=['POST'])
 @login_required
-@requires_roles(UserRole.ADMIN)
+@requires_roles(UserRole.SUPER_ADMIN)
 def set_user_role(user_id):
     from models import User
 
@@ -562,7 +626,7 @@ def set_user_role(user_id):
 
 @students_bp.route('/users')
 @login_required
-@requires_roles(UserRole.ADMIN)
+@requires_roles(UserRole.SUPER_ADMIN)
 def list_users():
     users = User.query.order_by(User.username).all()
     return render_template('students/users_list.html', users=users)
@@ -570,7 +634,7 @@ def list_users():
 
 @students_bp.route('/users/new-teacher', methods=['GET', 'POST'])
 @login_required
-@requires_roles(UserRole.ADMIN)
+@requires_roles(UserRole.SUPER_ADMIN)
 def create_teacher_user():
     if request.method == 'POST':
         username = (request.form.get('username') or '').strip()
@@ -787,7 +851,7 @@ def subject_report(subject_id):
 
 @students_bp.route('/reports/payment/<int:payment_id>')
 @login_required
-@requires_roles(UserRole.ADMIN)
+@requires_roles(UserRole.SUPER_ADMIN)
 def report_payment(payment_id):
     from models import Payment
 
@@ -804,24 +868,35 @@ def report_payment(payment_id):
 @requires_roles(UserRole.TEACHER)
 def teacher_subjects():
     # list subjects assigned to current teacher and their students
-    subjects = Subject.query.filter_by(teacher_id=current_user.id).order_by(Subject.name).all()
+    subjects = Subject.query.filter_by(teacher_id=current_user.id).order_by(Subject.year_group, Subject.name).all()
     data = []
     for s in subjects:
+        # Get all students enrolled in this year group, AND students who might already have a grade
         students = (
             db.session.query(Student)
-            .join(Grade)
-            .filter(Grade.subject_id == s.id)
+            .outerjoin(Grade, db.and_(Grade.student_id == Student.id, Grade.subject_id == s.id))
+            .filter(db.or_(Student.current_year_group == s.year_group, Grade.subject_id == s.id))
             .group_by(Student.id)
-            .order_by(Student.last_name, Student.first_name)
+            .order_by(Student.section, Student.last_name, Student.first_name)
             .all()
         )
-        data.append({'subject': s, 'students': students})
+
+        # Build student data with their current grade for the subject
+        student_data = []
+        for student in students:
+            grade = Grade.query.filter_by(student_id=student.id, subject_id=s.id).first()
+            student_data.append({
+                'student': student,
+                'grade': grade
+            })
+
+        data.append({'subject': s, 'students': student_data})
     return render_template('students/teacher_subjects.html', data=data)
 
 
 @students_bp.route('/import', methods=['POST'])
 @login_required
-@requires_roles(UserRole.ADMIN)
+@requires_roles(UserRole.SUPER_ADMIN)
 def import_csv():
     # expects file in 'file' and type in 'type' (students|subjects|grades)
     f = request.files.get('file')
@@ -849,7 +924,7 @@ def import_csv():
 
 @students_bp.route('/export.csv')
 @login_required
-@requires_roles(UserRole.ADMIN)
+@requires_roles(UserRole.SUPER_ADMIN)
 def export_csv():
     typ = request.args.get('type', 'students')
     if typ == 'students':
@@ -1035,7 +1110,7 @@ def attendance_student(student_id):
 
 @students_bp.route('/attendance/<int:attendance_id>/justify', methods=['PATCH'])
 @login_required
-@requires_roles(UserRole.ADMIN)
+@requires_roles(UserRole.SUPER_ADMIN)
 def justify_attendance(attendance_id):
     a = db.session.get(Attendance, attendance_id)
     if a is None:

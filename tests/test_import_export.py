@@ -2,11 +2,11 @@ import io
 from werkzeug.security import generate_password_hash
 
 
-def test_import_students_and_export(auth_client, app):
+def test_import_students_and_export(super_admin_client, app):
     from extensions import db
     from models import Student
 
-    client = auth_client
+    client = super_admin_client
     # upload students CSV
     with open('tests/fixtures/students_sample.csv', 'rb') as f:
         data = {'file': (f, 'students_sample.csv'), 'type': 'students'}
@@ -20,11 +20,11 @@ def test_import_students_and_export(auth_client, app):
     assert b'first_name' in resp2.data
 
 
-def test_import_subjects_and_grades_and_export(auth_client, app):
+def test_import_subjects_and_grades_and_export(super_admin_client, app):
     from extensions import db
     from models import Subject, Student
 
-    client = auth_client
+    client = super_admin_client
     # import subjects
     with open('tests/fixtures/subjects_sample.csv', 'rb') as f:
         data = {'file': (f, 'subjects_sample.csv'), 'type': 'subjects'}

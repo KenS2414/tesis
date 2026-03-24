@@ -7,17 +7,58 @@
     {% for item in data %}
       <div class="card mb-3">
         <div class="card-body">
-          <h5 class="card-title">{{ item.subject.name }} {% if item.subject.code %}<small class="text-muted">({{ item.subject.code }})</small>{% endif %}</h5>
-          <p class="mb-2">Estudiantes:</p>
-          <ul>
-            {% for s in item.students %}
-              <li><a href="{{ url_for('students_bp.student_detail', student_id=s.id) }}">{{ s.first_name }} {{ s.last_name }}</a></li>
-            {% else %}
-              <li>No hay estudiantes con notas en esta materia.</li>
-            {% endfor %}
-          </ul>
-          <a class="btn btn-sm btn-outline-primary me-2" href="{{ url_for('students_bp.subject_report', subject_id=item.subject.id) }}">Ver informe</a>
-          <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('students_bp.subject_detail', subject_id=item.subject.id) }}">Ver materia</a>
+          <h5 class="card-title">{{ item.subject.name }} {% if item.subject.code %}<small class="text-muted">({{ item.subject.code }})</small>{% endif %} <span class="badge bg-secondary">{{ item.subject.year_group }}</span></h5>
+          <div class="table-responsive mt-3">
+            <table class="table table-hover align-middle">
+              <thead class="table-light">
+                <tr>
+                  <th>Estudiante</th>
+                  <th>Cédula</th>
+                  <th>Sección</th>
+                  <th>Nota actual</th>
+                  <th>Acción</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for st_data in item.students %}
+                  {% set s = st_data.student %}
+                  {% set g = st_data.grade %}
+                  <tr>
+                    <td><a href="{{ url_for('students_bp.student_detail', student_id=s.id) }}" class="text-decoration-none fw-medium">{{ s.last_name }}, {{ s.first_name }}</a></td>
+                    <td>{{ s.cedula or '-' }}</td>
+                    <td>{{ s.section or '-' }}</td>
+                    <td>
+                      {% if g and g.score is not none %}
+                        <span class="badge {% if g.score >= 6.0 %}bg-success{% else %}bg-danger{% endif %}">{{ g.score }}</span>
+                      {% else %}
+                        <span class="badge bg-secondary">Sin nota</span>
+                      {% endif %}
+                    </td>
+                    <td>
+                      {% if g %}
+                        <a href="{{ url_for('students_bp.edit_grade', grade_id=g.id) }}" class="btn btn-sm btn-outline-primary">Editar Nota</a>
+                      {% else %}
+                        <form action="{{ url_for('students_bp.add_grade', student_id=s.id) }}" method="post" class="d-flex align-items-center gap-2">
+                          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                          <input type="hidden" name="subject_id" value="{{ item.subject.id }}">
+                          <input type="number" step="0.01" min="0" max="10" name="score" class="form-control form-control-sm w-auto" placeholder="Nota" required>
+                          <button type="submit" class="btn btn-sm btn-primary">Añadir</button>
+                        </form>
+                      {% endif %}
+                    </td>
+                  </tr>
+                {% else %}
+                  <tr>
+                    <td colspan="5" class="text-center text-muted">No hay estudiantes inscritos en este año/grupo.</td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+          <div class="mt-2">
+            <a class="btn btn-sm btn-outline-primary me-2" href="{{ url_for('students_bp.subject_report', subject_id=item.subject.id) }}">Ver informe</a>
+            <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('students_bp.subject_detail', subject_id=item.subject.id) }}">Ver materia</a>
+          </div>
         </div>
       </div>
     {% endfor %}

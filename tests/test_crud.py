@@ -50,7 +50,7 @@ def create_user(username, password, role='user'):
 
 def test_subject_crud_and_grade_crud(client):
     # create admin and teacher
-    admin = create_user('admin2@example.com', 'adminpass', role='admin')
+    admin = create_user('admin2@example.com', 'adminpass', role='super_admin')
     teacher = create_user('teacher2@example.com', 'teachpass', role='teacher')
     # login as admin and create subject
     # include CSRF token from login form

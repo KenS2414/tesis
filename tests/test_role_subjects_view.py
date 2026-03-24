@@ -2,7 +2,7 @@ import pytest
 from models import User, Student, Subject, Grade, UserRole
 from werkzeug.security import generate_password_hash
 
-def test_create_student_with_subjects(admin_client, app):
+def test_create_student_with_subjects(super_admin_client, app):
     from extensions import db
     # create subjects
     s1 = Subject(name="Math", code="M1")
@@ -17,7 +17,7 @@ def test_create_student_with_subjects(admin_client, app):
         "email": "new@student.com",
         "subjects": [s1.id, s2.id]
     }
-    resp = admin_client.post("/students/new", data=data, follow_redirects=True)
+    resp = super_admin_client.post("/students/new", data=data, follow_redirects=True)
     assert resp.status_code == 200
 
     # Verify student created
@@ -33,7 +33,7 @@ def test_create_student_with_subjects(admin_client, app):
     assert grades[0].value is None
 
 
-def test_create_student_with_credentials_from_admin_panel(admin_client, app):
+def test_create_student_with_credentials_from_admin_panel(super_admin_client, app):
     from extensions import db
 
     data = {
@@ -43,7 +43,7 @@ def test_create_student_with_credentials_from_admin_panel(admin_client, app):
         "login_username": "cred@student.com",
         "login_password": "pass1234",
     }
-    resp = admin_client.post("/students/new", data=data, follow_redirects=True)
+    resp = super_admin_client.post("/students/new", data=data, follow_redirects=True)
     assert resp.status_code == 200
 
     st = Student.query.filter_by(email="cred@student.com").first()

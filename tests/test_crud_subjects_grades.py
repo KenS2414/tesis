@@ -16,7 +16,7 @@ def test_crud_subjects_and_grades():
         db.drop_all()
         db.create_all()
 
-        admin = User(username="admin", role="admin")
+        admin = User(username="admin", role="super_admin")
         admin.password_hash = generate_password_hash("pass")
         teacher = User(username="teacher", role="teacher")
         teacher.password_hash = generate_password_hash("pass")

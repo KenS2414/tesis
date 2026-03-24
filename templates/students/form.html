@@ -4,7 +4,7 @@
 
 {% block content %}
   <h1 class="h4 mb-3">{% if student %}Editar{% else %}Nuevo{% endif %} estudiante</h1>
-  <form method="post" class="row g-3">
+  <form method="post" class="row g-3" enctype="multipart/form-data">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
     <div class="col-md-6">
       <label for="first_name" class="form-label">Nombre</label>
@@ -37,16 +37,41 @@
     <div class="col-md-6">
       <label for="current_year_group" class="form-label">Año actual</label>
       {% set selected_student_year = student.current_year_group if student else '' %}
-      <select id="current_year_group" name="current_year_group" class="form-select">
+      <select id="current_year_group" name="current_year_group" class="form-select" {% if selected_student_year %}disabled{% endif %}>
         <option value="">-- Selecciona un año --</option>
         {% for yg in year_group_options %}
           <option value="{{ yg }}" {% if selected_student_year == yg %}selected{% endif %}>{{ yg }}</option>
         {% endfor %}
       </select>
+      {% if selected_student_year %}
+        <input type="hidden" name="current_year_group" value="{{ selected_student_year }}">
+        <div class="mt-1"><small class="text-muted">El año actual se actualiza automáticamente al aprobar las materias.</small></div>
+      {% endif %}
     </div>
     <div class="col-md-6">
       <label for="dob" class="form-label">Fecha nacimiento (YYYY-MM-DD)</label>
       <input id="dob" name="dob" value="{{ student.dob if student and student.dob else '' }}" class="form-control" />
+    </div>
+    <div class="col-md-6">
+      <label for="cedula" class="form-label">Cédula</label>
+      <input id="cedula" name="cedula" value="{{ student.cedula if student and student.cedula else '' }}" class="form-control" maxlength="8" pattern="\d*" title="Debe contener solo números (hasta 8 dígitos)" />
+    </div>
+    <div class="col-md-6">
+      <label for="section" class="form-label">Sección</label>
+      <select id="section" name="section" class="form-select">
+        <option value="">-- Selecciona una sección --</option>
+        <option value="A" {% if student and student.section == 'A' %}selected{% endif %}>A</option>
+        <option value="B" {% if student and student.section == 'B' %}selected{% endif %}>B</option>
+      </select>
+    </div>
+    <div class="col-md-6">
+      <label for="photo" class="form-label">Foto de perfil</label>
+      <input type="file" id="photo" name="photo" class="form-control" accept="image/*" />
+      {% if student and student.photo_filename %}
+      <div class="mt-2">
+          <small class="text-muted">Ya tiene una foto subida.</small>
+      </div>
+      {% endif %}
     </div>
 
     {% if not student and subjects %}
