@@ -248,10 +248,17 @@ def student_edit(student_id):
         # If year group was changed (e.g. from empty to a specific year), auto-assign subjects
         if current_year_group and current_year_group != old_year_group:
             subjects_to_assign = Subject.query.filter_by(year_group=current_year_group).all()
+            subject_ids = [s.id for s in subjects_to_assign]
+            # Bulk fetch existing grades to avoid N+1 query
+            existing_subject_ids = {
+                g.subject_id for g in Grade.query.filter(
+                    Grade.student_id == student.id,
+                    Grade.subject_id.in_(subject_ids)
+                ).all()
+            }
             for subj in subjects_to_assign:
-                # Check if grade already exists to avoid duplicates
-                existing_grade = Grade.query.filter_by(student_id=student.id, subject_id=subj.id).first()
-                if not existing_grade:
+                # Check if grade already exists in memory to avoid duplicates
+                if subj.id not in existing_subject_ids:
                     grade = Grade(student_id=student.id, subject_id=subj.id, value=None)
                     db.session.add(grade)
 
