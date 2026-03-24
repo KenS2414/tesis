@@ -6,7 +6,7 @@ from models import Student, Subject, Grade, UserRole
 from models import AssessmentCategory, AcademicPeriod
 from utils.auth import requires_roles
 from flask import Response
-from utils.pdf_reports import generate_gradebook_pdf, generate_payment_pdf
+from utils.pdf_reports import generate_gradebook_pdf
 from werkzeug.utils import secure_filename
 import os
 from scripts.import_export import (
@@ -850,20 +850,6 @@ def subject_report(subject_id):
             report['failed'] += 1
         report['details'].append({'student_id': st.id, 'student_name': f"{st.first_name} {st.last_name}", 'average': avg, 'passed': passed})
     return report
-
-
-@students_bp.route('/reports/payment/<int:payment_id>')
-@login_required
-@requires_roles(UserRole.SUPER_ADMIN)
-def report_payment(payment_id):
-    from models import Payment
-
-    p = db.session.get(Payment, payment_id)
-    if p is None:
-        abort(404)
-    student = db.session.get(Student, p.student_id)
-    pdf_bytes = generate_payment_pdf(p, student)
-    return Response(pdf_bytes, mimetype='application/pdf', headers={"Content-Disposition": f"attachment; filename=payment_{p.id}.pdf"})
 
 
 @students_bp.route('/teacher/subjects')

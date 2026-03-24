@@ -1,9 +1,11 @@
-from flask import Blueprint, render_template, redirect, url_for, flash, current_app, abort
+from flask import Blueprint, render_template, redirect, url_for, flash, current_app, abort, Response
 from flask_login import login_required, current_user
 
 from extensions import db
-from models import Payment, UserRole
+from models import Payment, Student, UserRole
 from utils.aws import get_presigned_url
+from utils.pdf_reports import generate_payment_pdf
+from utils.auth import requires_roles
 
 
 payments_admin_bp = Blueprint("payments_admin_bp", __name__)
@@ -73,3 +75,15 @@ def admin_debts():
     # Fetch accounts with balance > 0
     accounts = StudentAccount.query.filter(StudentAccount.balance_total > 0).all()
     return render_template("payments/admin_debts.html", accounts=accounts)
+
+
+@payments_admin_bp.route("/admin/payments/<int:payment_id>/report")
+@login_required
+@requires_roles(UserRole.SUPER_ADMIN)
+def report_payment(payment_id):
+    p = db.session.get(Payment, payment_id)
+    if p is None:
+        abort(404)
+    student = db.session.get(Student, p.student_id)
+    pdf_bytes = generate_payment_pdf(p, student)
+    return Response(pdf_bytes, mimetype='application/pdf', headers={"Content-Disposition": f"attachment; filename=payment_{p.id}.pdf"})
