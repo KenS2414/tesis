@@ -27,13 +27,14 @@
     </ul>
   {% else %}
     <h5>Estudiantes con notas</h5>
-    {% for item in data %}
+    {% for s in students %}
       <div class="card mb-2">
         <div class="card-body">
-          <h6 class="card-subtitle mb-2">{{ item.student.first_name }} {{ item.student.last_name }}</h6>
-          <p>Promedio: {% if item.average is not none %}{{ '%.2f'|format(item.average) }}{% else %}-{% endif %}</p>
+          <h6 class="card-subtitle mb-2">{{ s.first_name }} {{ s.last_name }}</h6>
+          {% set avg = averages_map.get(s.id) %}
+          <p>Promedio: {% if avg is not none %}{{ '%.2f'|format(avg) }}{% else %}-{% endif %}</p>
           <ul>
-            {% for g in item.grades %}
+            {% for g in grades_map.get(s.id, []) %}
               <li>{{ g.term or '' }} - {{ g.value or g.score }} {% if g.comment %}- {{ g.comment }}{% endif %}</li>
             {% endfor %}
           </ul>
