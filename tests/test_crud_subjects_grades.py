@@ -44,19 +44,19 @@ def test_crud_subjects_and_grades():
         # Teacher adds a grade
         client.get("/logout")
         client.post("/login", data={"username": "teacher", "password": "pass"})
-        resp = client.post(f"/students/{stu.id}/add-grade", data={"subject_id": subj.id, "score": 15, "term": "1"}, follow_redirects=True)
+        resp = client.post(f"/teacher/{stu.id}/add-grade", data={"subject_id": subj.id, "score": 15, "term": "1"}, follow_redirects=True)
         assert resp.status_code == 200
         grade = Grade.query.filter_by(student_id=stu.id, subject_id=subj.id).first()
         assert grade is not None
 
         # Teacher edits the grade
-        resp = client.post(f"/students/grades/{grade.id}/edit", data={"score": 18, "term": "1"}, follow_redirects=True)
+        resp = client.post(f"/teacher/grades/{grade.id}/edit", data={"score": 18, "term": "1"}, follow_redirects=True)
         assert resp.status_code == 200
         db.session.refresh(grade)
         assert float(grade.score) == 18.0
 
         # Teacher deletes the grade
-        resp = client.post(f"/students/grades/{grade.id}/delete", follow_redirects=True)
+        resp = client.post(f"/teacher/grades/{grade.id}/delete", follow_redirects=True)
         assert resp.status_code == 200
         assert db.session.get(Grade, grade.id) is None
 

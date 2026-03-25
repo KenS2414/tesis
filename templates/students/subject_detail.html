@@ -10,7 +10,7 @@
     </div>
     <div>
       {% if current_user.role in ['teacher', 'admin', 'super_admin'] %}
-      <a class="btn btn-outline-primary" href="{{ url_for('students_bp.report_gradebook', subject_id=subject.id) }}">Descargar Reporte PDF</a>
+      <a class="btn btn-outline-primary" href="{{ url_for('teachers_bp.report_gradebook', subject_id=subject.id) }}">Descargar Reporte PDF</a>
       {% endif %}
       <a class="btn btn-outline-secondary" href="{{ url_for('students_bp.list_subjects') }}">Volver</a>
     </div>

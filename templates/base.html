@@ -35,7 +35,7 @@
               {% endif %}
 
               {% if current_user.role == 'teacher' %}
-              <a class="nav-link" href="{{ url_for('students_bp.teacher_subjects') }}">Materias</a>
+              <a class="nav-link" href="{{ url_for('teachers_bp.teacher_subjects') }}">Materias</a>
               {% endif %}
 
               {% if current_user.role == 'student' %}

@@ -5,6 +5,7 @@ from payments_admin_bp import payments_admin_bp
 from payments_student_bp import payments_student_bp
 from students_bp import students_bp
 from system_bp import system_bp
+from teachers_bp import teachers_bp
 
 
 def register_app_blueprints(flask_app):
@@ -13,6 +14,7 @@ def register_app_blueprints(flask_app):
         system_bp,
         auth_bp,
         students_bp,
+        teachers_bp,
         finance_bp,
         payments_admin_bp,
         payments_student_bp,

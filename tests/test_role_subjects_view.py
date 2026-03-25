@@ -99,7 +99,7 @@ def test_student_dashboard_view(client, app):
     assert f'/students/{s.id}' in html
 
 def test_teacher_subjects_access(teacher_client, app):
-    resp = teacher_client.get("/students/teacher/subjects")
+    resp = teacher_client.get("/teacher/subjects")
     assert resp.status_code == 200
     assert "Mis Materias" in resp.get_data(as_text=True)
 
