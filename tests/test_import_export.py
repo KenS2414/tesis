@@ -68,3 +68,59 @@ def test_import_subjects_and_grades_and_export(super_admin_client, app):
     assert resp2.status_code == 200
     assert resp2.headers.get('Content-Type') == 'text/csv'
     assert b'student_email' in resp2.data
+
+def test_export_gradebook_happy_path(teacher_client, teacher_user, app):
+    from extensions import db
+    from models import Subject, Student, Grade
+
+    client = teacher_client
+
+    # 1. Setup a subject owned by the teacher
+    subj = Subject(name="Ciencias", code="SCI101", teacher_id=teacher_user.id)
+    db.session.add(subj)
+    db.session.commit()
+
+    # 2. Setup a student and grade for the subject
+    student = Student(first_name="Carlos", last_name="Santana", email="carlos@example.com", cedula="12345678")
+    db.session.add(student)
+    db.session.commit()
+
+    grade = Grade(student_id=student.id, subject_id=subj.id, value=15.0)
+    db.session.add(grade)
+    db.session.commit()
+
+    # 3. Request gradebook export
+    resp = client.get(f'/teacher/gradebook/{subj.id}.csv')
+
+    # 4. Verify successful response and headers
+    assert resp.status_code == 200
+    assert resp.headers.get('Content-Type') == 'text/csv'
+
+    # 5. Verify CSV content matches expected output
+    content = resp.data.decode('utf-8')
+    assert "student_id,first_name,last_name,email,score,comment,term" in content
+    assert f"{student.id},Carlos,Santana,carlos@example.com,15.00,," in content
+
+
+def test_export_gradebook_access_control(client, app):
+    from extensions import db
+    from models import Subject, User, UserRole
+    from werkzeug.security import generate_password_hash
+
+    # 1. Create a student user and log in
+    student_user = User(username="student1", password_hash=generate_password_hash("studentpass"), role=UserRole.STUDENT)
+    db.session.add(student_user)
+    db.session.commit()
+
+    client.post("/login", data={"username": "student1", "password": "studentpass"}, follow_redirects=True)
+
+    # 2. Setup a subject
+    subj = Subject(name="Geografia", code="GEO101")
+    db.session.add(subj)
+    db.session.commit()
+
+    # 3. Attempt to export gradebook as a student
+    resp = client.get(f'/teacher/gradebook/{subj.id}.csv')
+
+    # 4. Assert access is denied (403 Forbidden or redirect)
+    assert resp.status_code in (403, 302)
