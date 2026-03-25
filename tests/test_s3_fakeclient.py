@@ -4,7 +4,9 @@ import os
 import pytest
 
 from app import create_app
-from utils.aws import upload_bytes_to_s3, get_presigned_url
+from botocore.exceptions import BotoCoreError, ClientError
+
+from utils.aws import upload_bytes_to_s3, get_presigned_url, check_s3_connection
 
 
 app = create_app()
@@ -49,3 +51,52 @@ def test_upload_and_presign_with_fake_s3(monkeypatch):
 
         url = get_presigned_url(key)
         assert url is not None and url.startswith("https://fake-s3/")
+
+
+def test_check_s3_connection_success(monkeypatch):
+    app.config["S3_BUCKET"] = "fake-bucket"
+
+    class FakeS3:
+        def head_bucket(self, Bucket):
+            pass  # Success
+
+    fake = FakeS3()
+    monkeypatch.setattr(boto3, "client", lambda *a, **k: fake)
+
+    with app.app_context():
+        assert check_s3_connection() is True
+
+
+def test_check_s3_connection_not_configured():
+    app.config["S3_BUCKET"] = None
+
+    with app.app_context():
+        assert check_s3_connection() is None
+
+
+def test_check_s3_connection_boto_core_error(monkeypatch):
+    app.config["S3_BUCKET"] = "fake-bucket"
+
+    class FakeS3:
+        def head_bucket(self, Bucket):
+            raise BotoCoreError()
+
+    fake = FakeS3()
+    monkeypatch.setattr(boto3, "client", lambda *a, **k: fake)
+
+    with app.app_context():
+        assert check_s3_connection() is False
+
+
+def test_check_s3_connection_client_error(monkeypatch):
+    app.config["S3_BUCKET"] = "fake-bucket"
+
+    class FakeS3:
+        def head_bucket(self, Bucket):
+            raise ClientError({"Error": {"Code": "403", "Message": "Forbidden"}}, "HeadBucket")
+
+    fake = FakeS3()
+    monkeypatch.setattr(boto3, "client", lambda *a, **k: fake)
+
+    with app.app_context():
+        assert check_s3_connection() is False
