@@ -4,6 +4,7 @@ from flask_login import current_user
 from extensions import db
 from models import Student, Subject, Grade, UserRole
 from models import AssessmentCategory, AcademicPeriod
+from datetime import datetime
 from utils.auth import requires_roles
 from flask import Response
 from utils.pdf_reports import generate_gradebook_pdf
@@ -26,6 +27,76 @@ YEAR_GROUP_OPTIONS = (
 )
 
 PASSING_SCORE_20 = 10.0
+
+from models import Attendance, AttendanceStatus
+
+@teachers_bp.route('/attendance/bulk', methods=['POST'])
+@login_required
+@requires_roles(UserRole.TEACHER, UserRole.ADMIN, UserRole.SUPER_ADMIN)
+def attendance_bulk():
+    payload = request.get_json() or {}
+    subject_id = payload.get('subject_id')
+    rec_date_str = payload.get('date')
+    records = payload.get('records')
+
+    if not subject_id or not records:
+        return ({'error': 'subject_id and records are required'}, 400)
+
+    subj = db.session.get(Subject, subject_id)
+    if not subj:
+        return ({'error': 'subject not found'}, 404)
+
+    if rec_date_str:
+        try:
+            rec_date = datetime.strptime(rec_date_str, '%Y-%m-%d').date()
+        except ValueError:
+            return ({'error': 'invalid date format, must be YYYY-MM-DD'}, 400)
+    else:
+        from datetime import date
+        rec_date = date.today()
+
+    try:
+        for rec in records:
+            student_id = rec.get('student_id')
+            status_str = rec.get('status')
+            remarks = rec.get('remarks')
+
+            if not student_id or not status_str:
+                continue
+
+            try:
+                status_enum = AttendanceStatus[status_str.upper()]
+            except KeyError:
+                continue
+
+            att = Attendance.query.filter_by(
+                student_id=student_id,
+                subject_id=subject_id,
+                date=rec_date
+            ).first()
+
+            if att:
+                att.status = status_enum
+                att.remarks = remarks
+                att.recorded_by = current_user.id
+            else:
+                att = Attendance(
+                    student_id=student_id,
+                    subject_id=subject_id,
+                    date=rec_date,
+                    status=status_enum,
+                    remarks=remarks,
+                    recorded_by=current_user.id
+                )
+                db.session.add(att)
+
+        db.session.commit()
+        return ({'status': 'success'}, 200)
+
+    except Exception as e:
+        db.session.rollback()
+        return ({'error': str(e)}, 500)
+
 
 def _is_passing_average(avg_value):
     if avg_value is None:
