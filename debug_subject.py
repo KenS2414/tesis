@@ -2,7 +2,7 @@ from app import create_app
 from extensions import db
 import init_db
 from werkzeug.security import generate_password_hash
-from models import User, Subject
+from models import User
 import os
 
 app = create_app()
