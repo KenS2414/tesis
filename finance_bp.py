@@ -117,21 +117,30 @@ def generate_monthly_invoices():
     account_map = {acct.student_id: acct for acct in accounts}
 
     try:
+        new_invoices = []
+        new_accounts = []
         for st in students:
             sch = scholarship_map.get(st.id) # returns None if no scholarship
             total_after_discount = _apply_scholarship(st.id, fee_total, scholarship=sch)
             inv = Invoice(student_id=st.id, monto_total=total_after_discount, fecha_emision=today, fecha_vencimiento=default_due, status=InvoiceStatus.PENDING)
-            db.session.add(inv)
+            new_invoices.append(inv)
             # ensure student account exists
             acct = account_map.get(st.id)
             if not acct:
                 acct = StudentAccount(student_id=st.id, balance_total=total_after_discount)
-                db.session.add(acct)
+                new_accounts.append(acct)
                 # Important: add newly created account to the map so subsequent loop operations on this student reuse it (though IDs shouldn't duplicate in `students`)
                 account_map[st.id] = acct
             else:
                 acct.balance_total = (Decimal(acct.balance_total) + total_after_discount)
             created += 1
+
+        # Eliminate N+1 INSERT queries with bulk saving
+        if new_invoices:
+            db.session.bulk_save_objects(new_invoices)
+        if new_accounts:
+            db.session.bulk_save_objects(new_accounts)
+
         db.session.commit()
         return jsonify({'status': 'ok', 'created_invoices': created})
     except Exception as e:
