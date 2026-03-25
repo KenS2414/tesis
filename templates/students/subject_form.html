@@ -29,10 +29,6 @@
       <label for="category" class="form-label">Categoría</label>
       <input name="category" id="category" value="{{ subject.category if subject else '' }}" class="form-control" />
     </div>
-    <div class="col-md-2">
-      <label for="credits" class="form-label">Créditos</label>
-      <input name="credits" id="credits" value="{{ subject.credits if subject and subject.credits is not none else '' }}" class="form-control" />
-    </div>
     <div class="col-md-6">
       <label for="teacher_id" class="form-label">Profesor</label>
       <select name="teacher_id" id="teacher_id" class="form-select">

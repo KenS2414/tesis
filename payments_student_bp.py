@@ -144,6 +144,9 @@ def payment_create():
             return render_template("payments/form.html")
 
         proof = request.files.get("proof")
+        if not proof or not proof.filename:
+            flash("Comprobante es obligatorio.", "warning")
+            return render_template("payments/form.html")
 
         filename, has_error = _process_proof_file(proof)
         if has_error:

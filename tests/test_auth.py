@@ -11,8 +11,11 @@ def test_register_happy_path(client, app):
         data={
             "username": "newstudent@example.com",
             "password": "securepassword",
+            "confirm_password": "securepassword",
             "first_name": "Nuevo",
             "last_name": "Estudiante",
+            "cedula": "12345678",
+            "dob": "2000-01-01",
         },
         follow_redirects=True,
     )
@@ -57,8 +60,11 @@ def test_register_missing_fields(client, app):
         data={
             "username": "incomplete@example.com",
             "password": "password123",
+            "confirm_password": "password123",
             "first_name": "", # Missing field
             "last_name": "Estudiante",
+            "cedula": "12345678",
+            "dob": "2000-01-01",
         },
         follow_redirects=True,
     )
@@ -66,8 +72,8 @@ def test_register_missing_fields(client, app):
     # Should render the register page again (status 200)
     assert resp.status_code == 200
 
-    # Verify the warning flash message (Rellena usuario, contraseña, nombre y apellido.)
-    assert b"Rellena usuario, contrase\xc3\xb1a, nombre y apellido." in resp.data
+    # Verify the warning flash message
+    assert b"Rellena todos los campos obligatorios." in resp.data
 
     # Verify no new users or students were created
     with app.app_context():
@@ -95,8 +101,11 @@ def test_register_duplicate_username(client, app):
         data={
             "username": "existing@example.com",
             "password": "newpassword123",
+            "confirm_password": "newpassword123",
             "first_name": "Duplicate",
             "last_name": "User",
+            "cedula": "12345678",
+            "dob": "2000-01-01",
         },
         follow_redirects=True,
     )

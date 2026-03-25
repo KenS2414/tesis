@@ -4,6 +4,9 @@
 <div class="card p-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h2>Estudiantes con Deudas</h2>
+        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#generateDebtModal">
+            Generar Deuda
+        </button>
     </div>
 
     <table class="table table-hover">
@@ -18,7 +21,7 @@
             {% for account in accounts %}
             <tr>
                 <td>{{ account.student.first_name }} {{ account.student.last_name }}</td>
-                <td class="text-danger fw-bold">{{ account.balance_total }}</td>
+                <td class="text-danger fw-bold">{{ account.balance_total }} Bs.</td>
                 <td>
                     <a href="{{ url_for('students_bp.student_detail', student_id=account.student.id) }}" class="btn btn-sm btn-outline-primary">Ver Perfil</a>
                 </td>
@@ -30,5 +33,49 @@
             {% endfor %}
         </tbody>
     </table>
+</div>
+
+<!-- Modal para Generar Deuda -->
+<div class="modal fade" id="generateDebtModal" tabindex="-1" aria-labelledby="generateDebtModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="POST" action="{{ url_for('payments_admin_bp.admin_generate_debt') }}">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="generateDebtModalLabel">Generar Nueva Deuda</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+
+                    <div class="mb-3">
+                        <label for="student_id" class="form-label">Estudiante</label>
+                        <select class="form-select" id="student_id" name="student_id" required>
+                            <option value="">-- Seleccionar estudiante --</option>
+                            {% for student in all_students %}
+                            <option value="{{ student.id }}">{{ student.first_name }} {{ student.last_name }} ({{ student.cedula or 'Sin Cédula' }})</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="description" class="form-label">Descripción</label>
+                        <input type="text" class="form-control" id="description" name="description" placeholder="Ej: Mensualidad Marzo" required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="amount" class="form-label">Monto (Bolívares)</label>
+                        <div class="input-group">
+                            <span class="input-group-text">Bs.</span>
+                            <input type="number" step="0.01" class="form-control" id="amount" name="amount" required>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Guardar Deuda</button>
+                </div>
+            </form>
+        </div>
+    </div>
 </div>
 {% endblock %}

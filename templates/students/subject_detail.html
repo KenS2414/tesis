@@ -6,7 +6,7 @@
     <div>
       <h2 class="h4">{{ subject.name }} {% if subject.code %}<small class="text-muted">({{ subject.code }})</small>{% endif %}</h2>
       <p class="mb-1">Año/Grupo: {{ subject.year_group or 'Sin año/grupo' }}</p>
-      <p class="mb-1">Categoría: {{ subject.category or 'N/A' }} | Créditos: {{ subject.credits or '-' }}</p>
+      <p class="mb-1">Categoría: {{ subject.category or 'N/A' }}</p>
     </div>
     <div>
       {% if current_user.role in ['teacher', 'admin', 'super_admin'] %}
@@ -26,7 +26,7 @@
       {% endfor %}
     </ul>
   {% else %}
-    <h5>Estudiantes con notas</h5>
+    <h5>Estudiantes Inscritos</h5>
     {% for s in students %}
       <div class="card mb-2">
         <div class="card-body">
@@ -34,14 +34,19 @@
           {% set avg = averages_map.get(s.id) %}
           <p>Promedio: {% if avg is not none %}{{ '%.2f'|format(avg) }}{% else %}-{% endif %}</p>
           <ul>
-            {% for g in grades_map.get(s.id, []) %}
-              <li>{{ g.term or '' }} - {{ g.value or g.score }} {% if g.comment %}- {{ g.comment }}{% endif %}</li>
-            {% endfor %}
+            {% set sgrades = grades_map.get(s.id, []) %}
+            {% if sgrades %}
+              {% for g in sgrades %}
+                <li>{{ g.term or '' }} - {{ g.value or g.score }} {% if g.comment %}- {{ g.comment }}{% endif %}</li>
+              {% endfor %}
+            {% else %}
+              <li class="text-muted small badge bg-light text-dark">Sin notas cargadas</li>
+            {% endif %}
           </ul>
         </div>
       </div>
     {% else %}
-      <p>No hay estudiantes con notas en esta materia.</p>
+      <p>No hay estudiantes inscritos en esta materia.</p>
     {% endfor %}
   {% endif %}
 

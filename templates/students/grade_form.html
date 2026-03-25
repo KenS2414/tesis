@@ -1,27 +1,39 @@
 {% extends 'base.html' %}
-{% block title %}Editar nota{% endblock %}
+
+{% block title %}Editar 4 Notas{% endblock %}
+
 {% block content %}
-  <h2 class="h5">Editar nota</h2>
-  <form method="post" class="row g-3">
+  <h1 class="h4 mb-3">Editar 4 Notas</h1>
+  <p class="text-muted">Estudiante: <strong>{{ student.first_name }} {{ student.last_name }}</strong></p>
+  <p class="text-muted mb-4">Materia: <strong>{{ subject.name }}</strong></p>
+
+  <form method="post" class="row g-4">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
-    <div class="col-md-6">
-      <label class="form-label">Materia</label>
-      <input readonly class="form-control" value="{{ grade.subject.name if grade and grade.subject else '' }}" />
-    </div>
-    <div class="col-md-2">
-      <label for="score" class="form-label">Nota (0-20)</label>
-      <input name="score" id="score" class="form-control" value="{{ grade.score if grade.score is not none else '' }}" />
-    </div>
-    <div class="col-md-2">
-      <label for="term" class="form-label">Periodo</label>
-      <input name="term" id="term" class="form-control" value="{{ grade.term or '' }}" />
-    </div>
-    <div class="col-md-12">
-      <label for="comment" class="form-label">Comentario</label>
-      <input name="comment" id="comment" class="form-control" value="{{ grade.comment or '' }}" />
-    </div>
-    <div class="col-12">
-      <button type="submit" class="btn btn-primary">Guardar</button>
+
+    {% for term in terms %}
+      {% set g = grades_map.get(term) %}
+      <div class="col-md-6">
+        <div class="card shadow-sm border-0">
+          <div class="card-header bg-light">
+            <h5 class="mb-0 fs-6">{{ term }}</h5>
+          </div>
+          <div class="card-body">
+            <div class="mb-2">
+              <label for="score_{{ term }}" class="form-label">Nota (0 - 20)</label>
+              <input type="number" step="0.01" min="0" max="20" id="score_{{ term }}" name="score_{{ term }}" value="{{ g.score if g and g.score is not none else '' }}" class="form-control" placeholder="Ej: 15.5">
+            </div>
+            <div>
+              <label for="comment_{{ term }}" class="form-label">Comentario</label>
+              <input type="text" id="comment_{{ term }}" name="comment_{{ term }}" value="{{ g.comment if g and g.comment else '' }}" class="form-control" placeholder="Opcional">
+            </div>
+          </div>
+        </div>
+      </div>
+    {% endfor %}
+
+    <div class="col-12 mt-4">
+      <button type="submit" class="btn btn-primary btn-lg">Guardar Notas</button>
+      <a class="btn btn-link ms-2" href="{{ url_for('students_bp.student_detail', student_id=student.id) }}">Cancelar</a>
     </div>
   </form>
 {% endblock %}

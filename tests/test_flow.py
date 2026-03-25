@@ -57,8 +57,11 @@ def test_full_flow(test_client):
         data={
             "username": "student@example.com",
             "password": "pass1234",
+            "confirm_password": "pass1234",
             "first_name": "Test",
             "last_name": "Student",
+            "cedula": "12345678",
+            "dob": "2000-01-01",
             "csrf_token": csrf,
         },
         follow_redirects=True,
@@ -68,12 +71,26 @@ def test_full_flow(test_client):
     student = Student.query.filter_by(email="student@example.com").first()
     assert student is not None
 
-    # Create a payment
+    # Create a payment (needs a file now)
+    import io
     rv = client.get("/payments/new")
     csrf = _extract_csrf(rv.get_data(as_text=True))
+
+    # Preparamos una imagen minima real valida (PNG) para pasar la validacion con Pillow
+    from PIL import Image
+    img_buf = io.BytesIO()
+    Image.new("RGB", (1, 1), color=(255, 255, 255)).save(img_buf, format="PNG")
+    img_buf.seek(0)
+    png_bytes = img_buf.getvalue()
+
     resp = client.post(
         "/payments/new",
-        data={"amount": "12.50", "csrf_token": csrf},
+        data={
+            "amount": "12.50",
+            "csrf_token": csrf,
+            "proof": (io.BytesIO(png_bytes), "proof.png")
+        },
+        content_type="multipart/form-data",
         follow_redirects=True,
     )
     assert resp.status_code == 200

@@ -62,85 +62,65 @@
     </div>
   </div>
 
-  <div class="card mb-3">
-    <div class="card-body">
-      <h5 class="card-title">Añadir nota</h5>
-      {% if current_user.is_authenticated and current_user.role in ['teacher', 'admin', 'super_admin'] %}
-      <form action="{{ url_for('teachers_bp.add_grade', student_id=student.id) }}" method="post" class="row g-2">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
-        <div class="col-md-4">
-          <label class="form-label">Materia</label>
-          <select name="subject_id" id="subject_id" class="form-select">
-            {% for subj in subjects %}
-              <option value="{{ subj.id }}">{{ subj.name }}</option>
-            {% endfor %}
-          </select>
-        </div>
-        <div class="col-md-2">
-          <label class="form-label">Nota</label>
-          <input name="score" id="score" class="form-control" />
-        </div>
-        <div class="col-md-2">
-          <label class="form-label">Periodo</label>
-          <input name="term" id="term" class="form-control" />
-        </div>
-        <div class="col-md-4">
-          <label class="form-label">Comentario</label>
-          <input name="comment" id="comment" class="form-control" />
-        </div>
-        <div class="col-12 mt-2">
-          <button type="submit" class="btn btn-primary">Añadir nota</button>
-        </div>
-      </form>
-      {% endif %}
-    </div>
-  </div>
-
   <div class="card">
     <div class="card-body">
-      <h5 class="card-title mb-4">Historial de Notas por Año</h5>
+      <h5 class="card-title mb-4">Materias Inscritas y Calificaciones</h5>
 
-      {% set grouped_grades = {} %}
-      {% for g in grades %}
-        {% set yg = g.subject.year_group or 'Sin año/grupo' %}
-        {% if yg not in grouped_grades %}
-          {% set _ = grouped_grades.update({yg: []}) %}
+      {% set grouped_subjects = {} %}
+      {% for s in subjects %}
+        {% set yg = s.year_group or 'Sin año/grupo' %}
+        {% if yg not in grouped_subjects %}
+          {% set _ = grouped_subjects.update({yg: []}) %}
         {% endif %}
-        {% set _ = grouped_grades[yg].append(g) %}
+        {% set _ = grouped_subjects[yg].append(s) %}
       {% endfor %}
 
-      {% if grouped_grades %}
+      {% if grouped_subjects %}
         <div class="accordion" id="gradesAccordion">
-          {% for yg, yg_grades in grouped_grades.items() %}
+          {% for yg, yg_subjects in grouped_subjects.items() %}
             <div class="accordion-item">
               <h2 class="accordion-header" id="heading{{ loop.index }}">
                 <button class="accordion-button {% if not loop.first %}collapsed{% endif %}" type="button" data-bs-toggle="collapse" data-bs-target="#collapse{{ loop.index }}" aria-expanded="{% if loop.first %}true{% else %}false{% endif %}" aria-controls="collapse{{ loop.index }}">
-                  <strong>{{ yg }}</strong> &nbsp;<span class="badge bg-secondary">{{ yg_grades|length }} materias</span>
+                  <strong>{{ yg }}</strong> &nbsp;<span class="badge bg-secondary">{{ yg_subjects|length }} materias</span>
                 </button>
               </h2>
               <div id="collapse{{ loop.index }}" class="accordion-collapse collapse {% if loop.first %}show{% endif %}" aria-labelledby="heading{{ loop.index }}" data-bs-parent="#gradesAccordion">
                 <div class="accordion-body p-0">
                   <ul class="list-group list-group-flush">
-                    {% for g in yg_grades %}
-                      <li class="list-group-item d-flex justify-content-between align-items-center">
-                        <div>
-                          <strong>{{ g.subject.name }}</strong>
-                          {% if g.score is not none %}
-                            <span class="badge {% if g.score >= 10.0 %}bg-success{% else %}bg-danger{% endif %} ms-2">{{ g.score }}</span>
-                          {% else %}
-                            <span class="badge bg-secondary ms-2">Sin calificar</span>
-                          {% endif %}
-                          {% if g.term %}<small class="text-muted ms-1">({{ g.term }})</small>{% endif %}
-                          {% if g.comment %}<div class="text-muted small mt-1"><em>{{ g.comment }}</em></div>{% endif %}
-                        </div>
-                        <div>
-                          {% if current_user.is_authenticated and current_user.role in ['teacher', 'admin', 'super_admin'] %}
-                            <a class="btn btn-sm btn-outline-primary me-2" href="{{ url_for('teachers_bp.edit_grade', grade_id=g.id) }}">Editar</a>
-                            <form action="{{ url_for('teachers_bp.delete_grade', grade_id=g.id) }}" method="post" class="d-inline">
-                              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
-                              <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('¿Eliminar nota?')">Eliminar</button>
-                            </form>
-                          {% endif %}
+                    {% for subj in yg_subjects %}
+                      <li class="list-group-item d-flex justify-content-between align-items-start flex-column flex-md-row">
+                        <div class="mb-2 mb-md-0 w-100">
+                          <div class="d-flex justify-content-between">
+                            <strong>{{ subj.name }}</strong>
+                            {% if current_user.is_authenticated and current_user.role in ['teacher', 'admin', 'super_admin'] %}
+                              <a class="btn btn-sm btn-outline-primary" href="{{ url_for('teachers_bp.edit_4_grades', student_id=student.id, subject_id=subj.id) }}">Editar 4 Notas</a>
+                            {% endif %}
+                          </div>
+                          <div class="mt-2">
+                            {% set s_grades = grades | selectattr("subject_id", "equalto", subj.id) | list %}
+                            {% if s_grades %}
+                                <div class="d-flex gap-2 flex-wrap">
+                                  {% for g in s_grades %}
+                                    {% if g.value is not none and g.term %}
+                                      <span class="badge {% if g.value >= 10.0 %}bg-success{% else %}bg-danger{% endif %} border rounded p-2 text-white">
+                                        {{ g.term }}: {{ g.value }}
+                                      </span>
+                                    {% endif %}
+                                  {% endfor %}
+                                </div>
+                                <div class="mt-2">
+                                  <strong>Promedio Ponderado:</strong>
+                                  {% set avg = student.weighted_average(subj.id) %}
+                                  {% if avg is not none %}
+                                    <span class="badge {% if avg >= 10.0 %}bg-success{% else %}bg-danger{% endif %} fs-6">{{ "%.2f"|format(avg) }}</span>
+                                  {% else %}
+                                    <span class="text-muted small">No aplicable aún</span>
+                                  {% endif %}
+                                </div>
+                            {% else %}
+                                <span class="text-muted small">Sin notas cargadas.</span>
+                            {% endif %}
+                          </div>
                         </div>
                       </li>
                     {% endfor %}
@@ -151,7 +131,7 @@
           {% endfor %}
         </div>
       {% else %}
-        <div class="alert alert-info mb-0">No hay historial de notas para este estudiante.</div>
+        <div class="alert alert-info mb-0">No hay materias registradas para este estudiante.</div>
       {% endif %}
     </div>
   </div>

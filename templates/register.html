@@ -11,7 +11,7 @@
              <p class="text-muted">Crea una cuenta para acceder</p>
         </div>
 
-        <form method="post" action="{{ url_for('auth_bp.register') }}">
+        <form method="post" action="{{ url_for('auth_bp.register') }}" enctype="multipart/form-data">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
 
             <div class="mb-3">
@@ -30,9 +30,30 @@
                 </div>
             </div>
 
-            <div class="mb-4">
+            <div class="row g-2 mb-3">
+                <div class="col-md-6">
+                  <label for="cedula" class="form-label">Cédula</label>
+                  <input id="cedula" name="cedula" class="form-control" required placeholder="Tu cédula" maxlength="8" pattern="\d*" title="Debe contener solo números (hasta 8 dígitos)">
+                </div>
+                <div class="col-md-6">
+                  <label for="dob" class="form-label">Fecha nacimiento</label>
+                  <input id="dob" name="dob" type="date" class="form-control" required>
+                </div>
+            </div>
+
+            <div class="mb-3">
               <label for="password" class="form-label">Contraseña</label>
               <input id="password" name="password" type="password" class="form-control" required placeholder="Elige una contraseña segura">
+            </div>
+
+            <div class="mb-3">
+              <label for="confirm_password" class="form-label">Confirmar Contraseña</label>
+              <input id="confirm_password" name="confirm_password" type="password" class="form-control" required placeholder="Repite tu contraseña">
+            </div>
+
+            <div class="mb-4">
+              <label for="photo" class="form-label">Foto de perfil (opcional)</label>
+              <input type="file" id="photo" name="photo" class="form-control" accept="image/*" />
             </div>
 
             <div class="d-grid gap-2 mb-3">
