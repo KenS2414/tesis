@@ -2,7 +2,15 @@ import io
 import os
 from datetime import datetime, timezone
 
-from flask import Blueprint, current_app, flash, redirect, render_template, request, url_for
+from flask import (
+    Blueprint,
+    current_app,
+    flash,
+    redirect,
+    render_template,
+    request,
+    url_for,
+)
 from flask_login import current_user, login_required
 from werkzeug.utils import secure_filename
 
@@ -29,6 +37,63 @@ def _is_admin_user():
         UserRole.ADMIN,
         UserRole.SUPER_ADMIN,
     )
+
+
+def _process_proof_file(proof):
+    """
+    Validates and saves the uploaded proof file (either to S3 or locally).
+    Returns a tuple (filename, has_error).
+    """
+    if not proof or not proof.filename:
+        return None, False
+
+    filename_safe = secure_filename(proof.filename)
+    ext = filename_safe.rsplit(".", 1)[1].lower() if "." in filename_safe else ""
+
+    # validate extension
+    if ext not in ALLOWED_EXTENSIONS:
+        flash("Tipo de archivo no permitido. Solo PNG, JPG, JPEG y PDF.", "warning")
+        return None, True
+
+    # basic MIME check
+    if proof.mimetype and not (
+        proof.mimetype.startswith("image/") or proof.mimetype == "application/pdf"
+    ):
+        flash("Tipo de archivo no permitido.", "warning")
+        return None, True
+
+    # read file bytes for deeper validation
+    file_bytes = proof.read()
+    if ext in {"png", "jpg", "jpeg"}:
+        try:
+            Image.open(io.BytesIO(file_bytes)).verify()
+        except (UnidentifiedImageError, Exception):
+            flash("Imagen inválida o corrupta.", "warning")
+            return None, True
+    elif ext == "pdf":
+        if not file_bytes.startswith(b"%PDF"):
+            flash("PDF inválido.", "warning")
+            return None, True
+
+    # use timezone-aware now() to avoid deprecation warning
+    timestamped = (
+        f"{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S')}_{filename_safe}"
+    )
+
+    if current_app.config.get("S3_BUCKET"):
+        content_type = proof.mimetype if proof.mimetype else None
+        try:
+            upload_bytes_to_s3(file_bytes, timestamped, content_type=content_type)
+            return timestamped, False
+        except Exception as e:
+            flash(f"Error subiendo a S3: {e}", "danger")
+            return None, True
+    else:
+        upload_dir = os.path.join(current_app.root_path, "static", "uploads")
+        os.makedirs(upload_dir, exist_ok=True)
+        with open(os.path.join(upload_dir, timestamped), "wb") as f:
+            f.write(file_bytes)
+        return timestamped, False
 
 
 @payments_student_bp.route("/payments")
@@ -79,64 +144,29 @@ def payment_create():
             return render_template("payments/form.html")
 
         proof = request.files.get("proof")
-        filename = None
-        if proof and proof.filename:
-            filename_safe = secure_filename(proof.filename)
-            ext = filename_safe.rsplit(".", 1)[1].lower() if "." in filename_safe else ""
-            # validate extension
-            if ext not in ALLOWED_EXTENSIONS:
-                flash(
-                    "Tipo de archivo no permitido. Solo PNG, JPG, JPEG y PDF.",
-                    "warning",
-                )
-                return render_template("payments/form.html")
-            # basic MIME check
-            if proof.mimetype and not (
-                proof.mimetype.startswith("image/")
-                or proof.mimetype == "application/pdf"
-            ):
-                flash("Tipo de archivo no permitido.", "warning")
-                return render_template("payments/form.html")
-            # read file bytes for deeper validation
-            file_bytes = proof.read()
-            if ext in {"png", "jpg", "jpeg"}:
-                try:
-                    Image.open(io.BytesIO(file_bytes)).verify()
-                except (UnidentifiedImageError, Exception):
-                    flash("Imagen inválida o corrupta.", "warning")
-                    return render_template("payments/form.html")
-            elif ext == "pdf":
-                if not file_bytes.startswith(b"%PDF"):
-                    flash("PDF inválido.", "warning")
-                    return render_template("payments/form.html")
-            # use timezone-aware now() to avoid deprecation warning
-            timestamped = (
-                f"{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S')}_"
-                + filename_safe
-            )
-            if current_app.config.get("S3_BUCKET"):
-                content_type = proof.mimetype if proof.mimetype else None
-                try:
-                    upload_bytes_to_s3(file_bytes, timestamped, content_type=content_type)
-                    filename = timestamped
-                except Exception as e:
-                    flash(f"Error subiendo a S3: {e}", "danger")
-                    return render_template("payments/form.html")
-            else:
-                upload_dir = os.path.join(current_app.root_path, "static", "uploads")
-                os.makedirs(upload_dir, exist_ok=True)
-                filename = timestamped
-                with open(os.path.join(upload_dir, filename), "wb") as f:
-                    f.write(file_bytes)
 
-        payment = Payment(
-            student_id=student.id,
-            amount=amount,
-            proof_filename=filename,
-            status="pending",
-        )
-        db.session.add(payment)
-        db.session.commit()
-        flash("Pago enviado y queda pendiente de verificación.", "success")
-        return redirect(url_for("payments_student_bp.payments_list"))
+        filename, has_error = _process_proof_file(proof)
+        if has_error:
+            return render_template("payments/form.html")
+
+        try:
+            payment = Payment(
+                student_id=student.id,
+                amount=amount,
+                proof_filename=filename,
+                status="pending",
+            )
+            db.session.add(payment)
+            db.session.commit()
+            flash("Pago enviado y queda pendiente de verificación.", "success")
+            return redirect(url_for("payments_student_bp.payments_list"))
+        except Exception as e:
+            db.session.rollback()
+            current_app.logger.error(f"Error saving payment: {e}")
+            flash(
+                "Ocurrió un error al guardar el pago. Por favor intenta de nuevo.",
+                "danger",
+            )
+            return render_template("payments/form.html")
+
     return render_template("payments/form.html")
