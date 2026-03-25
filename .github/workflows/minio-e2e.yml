@@ -9,19 +9,15 @@ on:
 jobs:
   minio-e2e:
     runs-on: ubuntu-latest
-    services:
-      minio:
-        image: minio/minio:latest
-        env:
-          MINIO_ROOT_USER: minioadmin
-          MINIO_ROOT_PASSWORD: minioadmin
-        ports:
-          - 9000:9000
-          - 9001:9001
-        options: >-
-          --entrypoint "/bin/sh" -- -c 'minio server /data --console-address ":9001"'
     steps:
       - uses: actions/checkout@v4
+
+      - name: Start MinIO container
+        run: |
+          docker run -d -p 9000:9000 -p 9001:9001 \
+            -e "MINIO_ROOT_USER=minioadmin" \
+            -e "MINIO_ROOT_PASSWORD=minioadmin" \
+            minio/minio:latest server /data --console-address ":9001"
 
       - name: Set up Python
         uses: actions/setup-python@v4
