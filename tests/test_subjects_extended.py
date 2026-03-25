@@ -11,7 +11,6 @@ def test_create_subject_with_extended_fields(super_admin_client, app):
         'code': 'PHY201',
         'year_group': '5to Año',
         'category': 'Física',
-        'credits': '5',
         'description': 'Curso avanzado de física moderna',
     }
     resp = client.post('/students/subjects/new', data=data, follow_redirects=True)
@@ -22,7 +21,6 @@ def test_create_subject_with_extended_fields(super_admin_client, app):
     assert s.name == 'Física Moderna'
     assert s.year_group == '5to Año'
     assert s.category == 'Física'
-    assert s.credits == 5
     assert 'moderna' in (s.description or '').lower()
 
 
@@ -52,7 +50,6 @@ def test_edit_subject_extended_fields(super_admin_client, app, sample_subjects):
         'code': 'MATH201',
         'year_group': '4to Año',
         'category': 'Matemáticas',
-        'credits': '6',
         'description': 'Nivel avanzado',
     }
     resp = client.post(f'/students/subjects/{subj.id}/edit', data=data, follow_redirects=True)
@@ -63,7 +60,6 @@ def test_edit_subject_extended_fields(super_admin_client, app, sample_subjects):
     assert s.code == 'MATH201'
     assert s.year_group == '4to Año'
     assert s.category == 'Matemáticas'
-    assert s.credits == 6
 
 
 def test_edit_subject_redirects_to_subjects_list(super_admin_client, app, sample_subjects):

@@ -6,12 +6,12 @@
   <form method="post" enctype="multipart/form-data" class="row g-3">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
     <div class="col-md-4">
-      <label for="amount" class="form-label">Importe</label>
+      <label for="amount" class="form-label">Importe (Bolívares)</label>
       <input id="amount" name="amount" required class="form-control" />
     </div>
     <div class="col-md-8">
-      <label for="proof" class="form-label">Comprobante (archivo opcional)</label>
-      <input id="proof" name="proof" type="file" class="form-control" />
+      <label for="proof" class="form-label">Comprobante (obligatorio)</label>
+      <input id="proof" name="proof" type="file" class="form-control" required />
     </div>
     <div class="col-12">
       <button type="submit" class="btn btn-primary">Enviar</button>

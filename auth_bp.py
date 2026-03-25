@@ -62,27 +62,67 @@ def register():
     if current_user.is_authenticated:
         return redirect(url_for("main_bp.dashboard"))
     if request.method == "POST":
+        from datetime import datetime
         username = request.form.get("username")
         password = request.form.get("password")
+        confirm_password = request.form.get("confirm_password")
         first_name = request.form.get("first_name")
         last_name = request.form.get("last_name")
-        if not username or not password or not first_name or not last_name:
-            flash("Rellena usuario, contraseña, nombre y apellido.", "warning")
+        cedula = (request.form.get("cedula") or "").strip() or None
+        dob_raw = request.form.get("dob")
+
+        if not username or not password or not first_name or not last_name or not confirm_password or not cedula or not dob_raw:
+            flash("Rellena todos los campos obligatorios.", "warning")
             return render_template("register.html")
+
+        if password != confirm_password:
+            flash("Las contraseñas no coinciden.", "danger")
+            return render_template("register.html")
+
+        try:
+            dob = datetime.strptime(dob_raw, "%Y-%m-%d").date()
+        except ValueError:
+            flash("Formato de fecha de nacimiento inválido.", "warning")
+            return render_template("register.html")
+
         if User.query.filter_by(username=username).first():
             flash("El usuario ya existe.", "warning")
             return render_template("register.html")
+
         new_user = User(
             username=username,
             password_hash=generate_password_hash(password),
             role=UserRole.STUDENT,
         )
         # create linked Student so payment flow works by default
-        student = Student(first_name=first_name, last_name=last_name, email=username)
-        db.session.add(new_user)
-        db.session.add(student)
-        db.session.commit()
-        login_user(new_user)
-        flash("Registro correcto. Bienvenido!", "success")
-        return redirect(url_for("main_bp.dashboard"))
+        student = Student(
+            first_name=first_name,
+            last_name=last_name,
+            email=username,
+            cedula=cedula,
+            dob=dob
+        )
+        try:
+            db.session.add(new_user)
+            db.session.add(student)
+            db.session.flush()
+
+            photo = request.files.get("photo")
+            if photo and photo.filename:
+                from werkzeug.utils import secure_filename
+                from utils.aws import upload_bytes_to_s3
+                filename = secure_filename(photo.filename)
+                key_name = f"students/{student.id}/photo_{filename}"
+                upload_bytes_to_s3(photo.read(), key_name, content_type=photo.content_type)
+                student.photo_filename = key_name
+
+            db.session.commit()
+            login_user(new_user)
+            flash("Registro correcto. Bienvenido!", "success")
+            return redirect(url_for("main_bp.dashboard"))
+        except Exception as e:
+            db.session.rollback()
+            flash(f"Error durante el registro: {e}", "danger")
+            return render_template("register.html")
+
     return render_template("register.html")

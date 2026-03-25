@@ -42,6 +42,7 @@ def test_create_student_with_credentials_from_admin_panel(super_admin_client, ap
         "email": "cred@student.com",
         "login_username": "cred@student.com",
         "login_password": "pass1234",
+        "login_confirm_password": "pass1234",
     }
     resp = super_admin_client.post("/students/new", data=data, follow_redirects=True)
     assert resp.status_code == 200

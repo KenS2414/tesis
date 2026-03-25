@@ -90,8 +90,11 @@ def test_upload_to_s3_and_presigned_url(s3_test_env):
             data={
                 "username": "s3student@example.com",
                 "password": "pass1234",
+                    "confirm_password": "pass1234",
                 "first_name": "S3",
                 "last_name": "Student",
+                    "cedula": "12345678",
+                    "dob": "2000-01-01",
             },
             follow_redirects=True,
         )

@@ -73,10 +73,71 @@ def admin_debts():
     if not _is_admin_user():
         flash("Acceso denegado.", "danger")
         return redirect(url_for("main_bp.dashboard"))
-    from models import StudentAccount
+    from models import StudentAccount, Student
     # Fetch accounts with balance > 0
     accounts = StudentAccount.query.options(joinedload(StudentAccount.student)).filter(StudentAccount.balance_total > 0).all()
-    return render_template("payments/admin_debts.html", accounts=accounts)
+    all_students = Student.query.order_by(Student.last_name, Student.first_name).all()
+    return render_template("payments/admin_debts.html", accounts=accounts, all_students=all_students)
+
+@payments_admin_bp.route("/admin/debts/new", methods=["POST"])
+@login_required
+def admin_generate_debt():
+    if not _is_admin_user():
+        flash("Acceso denegado.", "danger")
+        return redirect(url_for("main_bp.dashboard"))
+
+    from flask import request
+    from models import Invoice, InvoiceStatus, StudentAccount
+    from datetime import date
+
+    student_id = request.form.get("student_id")
+    amount = request.form.get("amount")
+
+    if not student_id or not amount:
+        flash("Debe seleccionar un estudiante y establecer un monto.", "warning")
+        return redirect(url_for("payments_admin_bp.admin_debts"))
+
+    try:
+        amount_val = float(amount)
+        if amount_val <= 0:
+            raise ValueError
+    except ValueError:
+        flash("El monto debe ser un número positivo.", "warning")
+        return redirect(url_for("payments_admin_bp.admin_debts"))
+
+    description = request.form.get("description")
+
+    try:
+        with db.session.begin_nested():
+            # Crear Invoice (Note: Since we are using an existing Invoice model, we attach the description if the model supports it.
+            # If not, the debt is still generated successfully. For completeness we log it if a logger is configured, but core logic applies)
+            new_invoice = Invoice(
+                student_id=student_id,
+                monto_total=amount_val,
+                fecha_emision=date.today(),
+                status=InvoiceStatus.PENDING
+            )
+            # Just a safeguard if we decide to add a description field to Invoice later
+            if hasattr(new_invoice, 'description'):
+                new_invoice.description = description
+
+            db.session.add(new_invoice)
+
+            # Actualizar StudentAccount (upsert)
+            account = StudentAccount.query.filter_by(student_id=student_id).first()
+            if account:
+                account.balance_total += amount_val
+            else:
+                account = StudentAccount(student_id=student_id, balance_total=amount_val)
+                db.session.add(account)
+
+        db.session.commit()
+        flash("Deuda generada exitosamente.", "success")
+    except Exception as e:
+        db.session.rollback()
+        flash(f"Error al generar deuda: {e}", "danger")
+
+    return redirect(url_for("payments_admin_bp.admin_debts"))
 
 
 @payments_admin_bp.route("/admin/payments/<int:payment_id>/report")

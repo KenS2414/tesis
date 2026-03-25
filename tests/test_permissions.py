@@ -62,7 +62,7 @@ def test_teacher_can_add_grade_but_student_cannot(client):
     # login as teacher and add grade
     resp = client.post('/login', data={'username': 'teacher@example.com', 'password': 'teachpass'}, follow_redirects=True)
     assert resp.status_code == 200
-    resp = client.post(f'/teacher/{student.id}/add-grade', data={'subject_id': s.id, 'score': '90'}, follow_redirects=True)
+    resp = client.post(f'/teacher/student/{student.id}/subject/{s.id}/grades', data={'score_Nota 1': '15'}, follow_redirects=True)
     assert resp.status_code == 200
 
     # logout
@@ -71,7 +71,7 @@ def test_teacher_can_add_grade_but_student_cannot(client):
     # login as student and attempt to add grade -> should be 403
     resp = client.post('/login', data={'username': 'student2@example.com', 'password': 'studpass'}, follow_redirects=True)
     assert resp.status_code == 200
-    resp = client.post(f'/teacher/{student.id}/add-grade', data={'subject_id': s.id, 'score': '80'}, follow_redirects=False)
+    resp = client.post(f'/teacher/student/{student.id}/subject/{s.id}/grades', data={'score_Nota 1': '10'}, follow_redirects=False)
     assert resp.status_code == 403
 
 def test_student_cannot_approve_payment(client):

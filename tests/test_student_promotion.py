@@ -10,8 +10,8 @@ def test_student_promotes_when_passing_all_subjects_of_year(super_admin_client, 
     db.session.commit()
 
     resp1 = super_admin_client.post(
-        f'/teacher/{student.id}/add-grade',
-        data={'subject_id': s1.id, 'score': '16', 'term': '2026-1'},
+        f'/teacher/student/{student.id}/subject/{s1.id}/grades',
+        data={'score_Nota 1': '16'},
         follow_redirects=True,
     )
     assert resp1.status_code == 200
@@ -19,8 +19,8 @@ def test_student_promotes_when_passing_all_subjects_of_year(super_admin_client, 
     assert st1.current_year_group == '1er Año'
 
     resp2 = super_admin_client.post(
-        f'/teacher/{student.id}/add-grade',
-        data={'subject_id': s2.id, 'score': '15', 'term': '2026-1'},
+        f'/teacher/student/{student.id}/subject/{s2.id}/grades',
+        data={'score_Nota 1': '15'},
         follow_redirects=True,
     )
     assert resp2.status_code == 200
@@ -36,19 +36,20 @@ def test_student_does_not_promote_with_failing_subject(super_admin_client, app):
     db.session.commit()
 
     super_admin_client.post(
-        f'/teacher/{student.id}/add-grade',
-        data={'subject_id': s1.id, 'score': '16', 'term': '2026-1'},
+        f'/teacher/student/{student.id}/subject/{s1.id}/grades',
+        data={'score_Nota 1': '16'},
         follow_redirects=True,
     )
     super_admin_client.post(
-        f'/teacher/{student.id}/add-grade',
-        data={'subject_id': s2.id, 'score': '8', 'term': '2026-1'},
+        f'/teacher/student/{student.id}/subject/{s2.id}/grades',
+        data={'score_Nota 1': '8'},
         follow_redirects=True,
     )
 
     st = db.session.get(Student, student.id)
     assert st.current_year_group == '1er Año'
-    assert Grade.query.filter_by(student_id=student.id).count() == 2
+    # There are 8 grades because 4 grades are created per subject when updated using POST, but only 2 of them has `value != None`
+    assert Grade.query.filter_by(student_id=student.id).filter(Grade.value != None).count() == 2
 
 from teachers_bp import _promote_student_if_ready
 
@@ -60,8 +61,8 @@ def test_unit_promote_student_success(app):
         db.session.add_all([student, s1, s2])
         db.session.commit()
 
-        g1 = Grade(student_id=student.id, subject_id=s1.id, value=15.0)
-        g2 = Grade(student_id=student.id, subject_id=s2.id, value=12.0)
+        g1 = Grade(student_id=student.id, subject_id=s1.id, term='Nota 1', value=15.0)
+        g2 = Grade(student_id=student.id, subject_id=s2.id, term='Nota 1', value=12.0)
         db.session.add_all([g1, g2])
         db.session.commit()
 
@@ -77,7 +78,7 @@ def test_unit_promote_student_final_year(app):
         db.session.add_all([student, s1])
         db.session.commit()
 
-        g1 = Grade(student_id=student.id, subject_id=s1.id, value=15.0)
+        g1 = Grade(student_id=student.id, subject_id=s1.id, term='Nota 1', value=15.0)
         db.session.add(g1)
         db.session.commit()
 
@@ -94,8 +95,8 @@ def test_unit_promote_student_failing_grades(app):
         db.session.add_all([student, s1, s2])
         db.session.commit()
 
-        g1 = Grade(student_id=student.id, subject_id=s1.id, value=15.0)
-        g2 = Grade(student_id=student.id, subject_id=s2.id, value=9.0) # Failing grade
+        g1 = Grade(student_id=student.id, subject_id=s1.id, term='Nota 1', value=15.0)
+        g2 = Grade(student_id=student.id, subject_id=s2.id, term='Nota 1', value=9.0) # Failing grade
         db.session.add_all([g1, g2])
         db.session.commit()
 
@@ -112,7 +113,7 @@ def test_unit_promote_student_incomplete_grades(app):
         db.session.add_all([student, s1, s2])
         db.session.commit()
 
-        g1 = Grade(student_id=student.id, subject_id=s1.id, value=15.0)
+        g1 = Grade(student_id=student.id, subject_id=s1.id, term='Nota 1', value=15.0)
         # s2 is missing a grade
         db.session.add(g1)
         db.session.commit()

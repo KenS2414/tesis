@@ -43,7 +43,11 @@ def list_students():
     page = request.args.get("page", type=int, default=1)
     per_page = 10
 
-    query = Student.query
+    # Ensure we only list students that either have the STUDENT role or have no user linked
+    query = Student.query.outerjoin(User, Student.email == User.username).filter(
+        db.or_(User.id.is_(None), User.role == UserRole.STUDENT)
+    )
+
     if q:
         like = f"%{q}%"
         query = query.filter(
@@ -78,6 +82,7 @@ def _validate_student_form(request, year_group_options):
     data["email"] = (request.form.get("email") or "").strip() or None
     data["login_username"] = (request.form.get("login_username") or "").strip() or None
     data["login_password"] = request.form.get("login_password") or ""
+    data["login_confirm_password"] = request.form.get("login_confirm_password") or ""
     data["current_year_group"] = (
         request.form.get("current_year_group") or ""
     ).strip() or None
@@ -93,6 +98,8 @@ def _validate_student_form(request, year_group_options):
         return None, "Si defines usuario, debes definir contraseña."
     if data["login_password"] and not data["login_username"]:
         return None, "Si defines contraseña, debes definir usuario."
+    if data["login_password"] and data["login_password"] != data["login_confirm_password"]:
+        return None, "Las contraseñas no coinciden."
     if (
         data["login_username"]
         and data["email"]
@@ -244,17 +251,41 @@ def student_create():
 
 @students_bp.route("/<int:student_id>/edit", methods=["GET", "POST"])
 @login_required
-@requires_roles(UserRole.SUPER_ADMIN)
+@requires_roles(UserRole.SUPER_ADMIN, UserRole.STUDENT)
 def student_edit(student_id):
+    if current_user.role == UserRole.STUDENT:
+        linked = current_user.get_student()
+        if linked is None or linked.id != student_id:
+            abort(403)
+
     student = db.session.get(Student, student_id)
     if student is None:
         flash("El estudiante no existe o fue eliminado.", "warning")
-        return redirect(url_for("students_bp.list_students"))
+        return redirect(url_for("main_bp.dashboard"))
     year_group_options = YEAR_GROUP_OPTIONS
     if request.method == "POST":
         student.first_name = request.form.get("first_name")
         student.last_name = request.form.get("last_name")
-        student.email = request.form.get("email")
+
+        # Omit reading email/cedula/dob for STUDENT
+        if current_user.role != UserRole.STUDENT:
+            student.email = request.form.get("email")
+            student.cedula = (request.form.get("cedula") or "").strip() or None
+
+            dob_raw = request.form.get("dob")
+            if dob_raw:
+                try:
+                    student.dob = datetime.strptime(dob_raw, "%Y-%m-%d").date()
+                except ValueError:
+                    flash("Formato de fecha inválido. Use YYYY-MM-DD.", "warning")
+                    return render_template(
+                        "students/form.html",
+                        student=student,
+                        year_group_options=year_group_options,
+                    )
+            else:
+                student.dob = None
+
         current_year_group = (
             request.form.get("current_year_group") or ""
         ).strip() or None
@@ -271,20 +302,6 @@ def student_edit(student_id):
                 student=student,
                 year_group_options=year_group_options,
             )
-
-        dob_raw = request.form.get("dob")
-        if dob_raw:
-            try:
-                student.dob = datetime.strptime(dob_raw, "%Y-%m-%d").date()
-            except ValueError:
-                flash("Formato de fecha inválido. Use YYYY-MM-DD.", "warning")
-                return render_template(
-                    "students/form.html",
-                    student=student,
-                    year_group_options=year_group_options,
-                )
-        else:
-            student.dob = None
 
         old_year_group = student.current_year_group
         student.current_year_group = current_year_group
@@ -308,7 +325,6 @@ def student_edit(student_id):
                     grade = Grade(student_id=student.id, subject_id=subj.id, value=None)
                     db.session.add(grade)
 
-        student.cedula = (request.form.get("cedula") or "").strip() or None
         student.section = (request.form.get("section") or "").strip() or None
 
         photo = request.files.get("photo")
@@ -322,6 +338,8 @@ def student_edit(student_id):
 
         db.session.commit()
         flash("Estudiante actualizado.", "success")
+        if current_user.role == UserRole.STUDENT:
+            return redirect(url_for("main_bp.dashboard"))
         return redirect(url_for("students_bp.list_students"))
     return render_template(
         "students/form.html", student=student, year_group_options=year_group_options
@@ -392,7 +410,6 @@ def new_subject():
         code = request.form.get("code")
         year_group = (request.form.get("year_group") or "").strip() or None
         category = request.form.get("category")
-        credits = request.form.get("credits")
         description = request.form.get("description")
         teacher_id = request.form.get("teacher_id")
 
@@ -410,25 +427,6 @@ def new_subject():
                 teachers=teachers,
                 year_group_options=year_group_options,
             )
-        # validate credits if provided
-        credits_val = None
-        if credits:
-            try:
-                credits_val = int(credits)
-                if credits_val < 0:
-                    flash("Credits must be non-negative.", "warning")
-                    return render_template(
-                        "students/subject_form.html",
-                        teachers=teachers,
-                        year_group_options=year_group_options,
-                    )
-            except ValueError:
-                flash("Formato de credits inválido.", "warning")
-                return render_template(
-                    "students/subject_form.html",
-                    teachers=teachers,
-                    year_group_options=year_group_options,
-                )
 
         # validate teacher_id if provided
         tid = None
@@ -456,7 +454,6 @@ def new_subject():
             code=code,
             year_group=year_group,
             category=category,
-            credits=credits_val,
             description=description,
             teacher_id=tid,
         )
@@ -485,7 +482,6 @@ def edit_subject(subject_id):
         code = request.form.get("code")
         year_group = (request.form.get("year_group") or "").strip() or None
         category = request.form.get("category")
-        credits = request.form.get("credits")
         description = request.form.get("description")
         teacher_id = request.form.get("teacher_id")
 
@@ -505,27 +501,6 @@ def edit_subject(subject_id):
                 teachers=teachers,
                 year_group_options=year_group_options,
             )
-        # validate credits if provided
-        credits_val = None
-        if credits:
-            try:
-                credits_val = int(credits)
-                if credits_val < 0:
-                    flash("Credits must be non-negative.", "warning")
-                    return render_template(
-                        "students/subject_form.html",
-                        subject=s,
-                        teachers=teachers,
-                        year_group_options=year_group_options,
-                    )
-            except ValueError:
-                flash("Formato de credits inválido.", "warning")
-                return render_template(
-                    "students/subject_form.html",
-                    subject=s,
-                    teachers=teachers,
-                    year_group_options=year_group_options,
-                )
 
         # validate teacher_id if provided
         tid = None
@@ -554,7 +529,6 @@ def edit_subject(subject_id):
         s.code = code
         s.year_group = year_group
         s.category = category
-        s.credits = credits_val
         s.description = description
         s.teacher_id = tid
         db.session.commit()
@@ -644,10 +618,11 @@ def subject_detail(subject_id):
     ):
         return ({"error": "forbidden: not teacher of this subject"}, 403)
 
+    # Modificar para incluir a todos los estudiantes inscritos en el subject.year_group o con grades (Outer Join)
     students = (
         db.session.query(Student)
-        .join(Grade, Grade.student_id == Student.id)
-        .filter(Grade.subject_id == subj.id)
+        .outerjoin(Grade, db.and_(Grade.student_id == Student.id, Grade.subject_id == subj.id))
+        .filter(db.or_(Student.current_year_group == subj.year_group, Grade.subject_id == subj.id))
         .group_by(Student.id)
         .order_by(Student.last_name, Student.first_name)
         .all()
@@ -659,42 +634,12 @@ def subject_detail(subject_id):
     for g in all_grades:
         grades_by_student.setdefault(g.student_id, []).append(g)
 
-    # Pre-calculate weighted averages for all students in this subject
-    from models import AssessmentCategory
-
-    rows = (
-        db.session.query(
-            Grade.student_id,
-            AssessmentCategory.id,
-            AssessmentCategory.peso_porcentual,
-            db.func.avg(Grade.value).label("avg_score"),
-        )
-        .join(AssessmentCategory, Grade.assessment_category_id == AssessmentCategory.id)
-        .filter(Grade.subject_id == subj.id)
-        .group_by(
-            Grade.student_id, AssessmentCategory.id, AssessmentCategory.peso_porcentual
-        )
-        .all()
-    )
-
-    student_averages = {}
-    for student_id, cat_id, peso, avg_score in rows:
-        if avg_score is None:
-            continue
-        w = float(peso) if peso is not None else 0.0
-        student_averages.setdefault(
-            student_id, {"total_weight": 0.0, "weighted_sum": 0.0}
-        )
-        student_averages[student_id]["total_weight"] += w
-        student_averages[student_id]["weighted_sum"] += float(avg_score) * w
-
+    # As part of Regla de 4 Notas refactoring, student.weighted_average will be updated in models.
+    # For now we'll call the instance method directly to compute average, and store in map.
     averages_map = {}
     for s in students:
-        data = student_averages.get(s.id)
-        if data and data["total_weight"] > 0:
-            averages_map[s.id] = data["weighted_sum"] / data["total_weight"]
-        else:
-            averages_map[s.id] = None
+        avg = s.weighted_average(subj.id)
+        averages_map[s.id] = avg
 
     return render_template(
         "students/subject_detail.html",
@@ -713,6 +658,10 @@ def delete_subject(subject_id):
     if s is None:
         abort(404)
     try:
+        # Primero eliminamos todas las notas vinculadas a esta materia para evitar conflictos de Foreign Key
+        Grade.query.filter_by(subject_id=s.id).delete()
+        Attendance.query.filter_by(subject_id=s.id).delete()
+
         db.session.delete(s)
         db.session.commit()
         flash("Materia eliminada.", "info")
@@ -758,14 +707,19 @@ def list_users():
 @login_required
 @requires_roles(UserRole.SUPER_ADMIN)
 def create_staff_user():
-    roles = [UserRole.TEACHER, UserRole.ADMIN, UserRole.ENROLLMENT, UserRole.TREASURY]
+    roles = [UserRole.TEACHER, UserRole.ADMIN]
     if request.method == "POST":
         username = (request.form.get("username") or "").strip()
         password = request.form.get("password") or ""
+        confirm_password = request.form.get("confirm_password") or ""
         role = request.form.get("role") or UserRole.TEACHER
 
-        if not username or not password:
-            flash("Usuario y contraseña son obligatorios.", "warning")
+        if not username or not password or not confirm_password:
+            flash("Usuario, contraseña y confirmación son obligatorios.", "warning")
+            return render_template("students/staff_form.html", roles=roles)
+
+        if password != confirm_password:
+            flash("Las contraseñas no coinciden.", "danger")
             return render_template("students/staff_form.html", roles=roles)
 
         if role not in roles:

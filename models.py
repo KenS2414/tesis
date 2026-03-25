@@ -65,42 +65,34 @@ class Student(db.Model):
         return f"<Student {self.id} {self.first_name} {self.last_name}>"
 
     def weighted_average(self, subject_id, periodo_id=None):
-        """Compute weighted average for this student in a given subject.
-
-        For each AssessmentCategory, compute the average of the student's grades
-        in that category (optionally filtered by periodo), then apply the
-        category weights (`peso_porcentual`). Returns a float between 0 and 10
-        or None if no grades available.
+        """Compute weighted average for this student in a given subject using the 4 fixed grades rule.
+        Weights: Nota 1 (30%), Nota 2 (30%), Nota 3 (25%), Nota 4 (15%).
         """
-        from sqlalchemy import func
-        # query averages per category
-        q = (
-            db.session.query(
-                AssessmentCategory.id,
-                AssessmentCategory.peso_porcentual,
-                func.avg(Grade.value).label('avg_score'),
-            )
-            .join(Grade, Grade.assessment_category_id == AssessmentCategory.id)
-            .filter(Grade.student_id == self.id, Grade.subject_id == subject_id)
-            .group_by(AssessmentCategory.id)
-        )
-        if periodo_id:
-            q = q.filter(Grade.periodo_id == periodo_id)
-        rows = q.all()
-        if not rows:
+        grades = Grade.query.filter_by(student_id=self.id, subject_id=subject_id).all()
+        if not grades:
             return None
-        total_weight = 0
-        weighted_sum = 0
-        for _id, peso, avg_score in rows:
-            if avg_score is None:
-                continue
-            w = float(peso) if peso is not None else 0.0
-            total_weight += w
-            # avg_score expected in 0-10
-            weighted_sum += float(avg_score) * w
-        if total_weight == 0:
+
+        WEIGHTS = {
+            'Nota 1': 0.30,
+            'Nota 2': 0.30,
+            'Nota 3': 0.25,
+            'Nota 4': 0.15
+        }
+
+        weighted_sum = 0.0
+        total_weight_applied = 0.0
+
+        for g in grades:
+            if g.value is not None and g.term in WEIGHTS:
+                w = WEIGHTS[g.term]
+                weighted_sum += float(g.value) * w
+                total_weight_applied += w
+
+        if total_weight_applied == 0:
             return None
-        return weighted_sum / total_weight
+
+        # Return the partial weighted average
+        return weighted_sum / total_weight_applied
 
 
 class Subject(db.Model):

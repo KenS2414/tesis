@@ -41,24 +41,19 @@ def test_crud_subjects_and_grades():
         db.session.add(stu)
         db.session.commit()
 
-        # Teacher adds a grade
+        # Teacher adds 4 grades
         client.get("/logout")
         client.post("/login", data={"username": "teacher", "password": "pass"})
-        resp = client.post(f"/teacher/{stu.id}/add-grade", data={"subject_id": subj.id, "score": 15, "term": "1"}, follow_redirects=True)
+        resp = client.post(f"/teacher/student/{stu.id}/subject/{subj.id}/grades", data={"score_Nota 1": 15, "comment_Nota 1": "Bien"}, follow_redirects=True)
         assert resp.status_code == 200
-        grade = Grade.query.filter_by(student_id=stu.id, subject_id=subj.id).first()
+        grade = Grade.query.filter_by(student_id=stu.id, subject_id=subj.id, term='Nota 1').first()
         assert grade is not None
 
         # Teacher edits the grade
-        resp = client.post(f"/teacher/grades/{grade.id}/edit", data={"score": 18, "term": "1"}, follow_redirects=True)
+        resp = client.post(f"/teacher/student/{stu.id}/subject/{subj.id}/grades", data={"score_Nota 1": 18, "comment_Nota 1": "Mejor"}, follow_redirects=True)
         assert resp.status_code == 200
         db.session.refresh(grade)
         assert float(grade.score) == 18.0
-
-        # Teacher deletes the grade
-        resp = client.post(f"/teacher/grades/{grade.id}/delete", follow_redirects=True)
-        assert resp.status_code == 200
-        assert db.session.get(Grade, grade.id) is None
 
         # Admin deletes the subject
         client.get("/logout")

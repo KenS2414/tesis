@@ -117,11 +117,7 @@ def _promote_student_if_ready(student):
         return None
 
     for subject in subjects_for_year:
-        avg = (
-            db.session.query(db.func.avg(Grade.value))
-            .filter(Grade.student_id == student.id, Grade.subject_id == subject.id)
-            .scalar()
-        )
+        avg = student.weighted_average(subject.id)
         if not _is_passing_average(avg):
             return None
 
@@ -130,107 +126,60 @@ def _promote_student_if_ready(student):
     db.session.commit()
     return next_year
 
-@teachers_bp.route('/<int:student_id>/add-grade', methods=['POST'])
+@teachers_bp.route('/student/<int:student_id>/subject/<int:subject_id>/grades', methods=['GET', 'POST'])
 @login_required
-@requires_roles(UserRole.TEACHER, UserRole.ADMIN)
-def add_grade(student_id):
+@requires_roles(UserRole.TEACHER, UserRole.ADMIN, UserRole.SUPER_ADMIN)
+def edit_4_grades(student_id, subject_id):
     student = db.session.get(Student, student_id)
-    if student is None:
+    subj = db.session.get(Subject, subject_id)
+    if not student or not subj:
         abort(404)
-    subject_id = request.form.get('subject_id')
-    score = request.form.get('score')
-    comment = request.form.get('comment')
-    term = request.form.get('term')
-    # validate subject
-    if not subject_id:
-        flash('Selecciona una materia.', 'warning')
-        return redirect(url_for('students_bp.student_detail', student_id=student.id))
-    try:
-        sid = int(subject_id)
-    except (TypeError, ValueError):
-        flash('Materia inválida.', 'warning')
-        return redirect(url_for('students_bp.student_detail', student_id=student.id))
-    subj = db.session.get(Subject, sid)
-    if subj is None:
-        flash('Materia no encontrada.', 'warning')
-        return redirect(url_for('students_bp.student_detail', student_id=student.id))
 
-    # validate score (optional but, if present, must be numeric and 0-20)
-    score_val = None
-    if score:
-        try:
-            score_val = float(score)
-            if score_val < 0 or score_val > 20:
-                flash('La nota debe estar entre 0 y 20.', 'warning')
-                return redirect(url_for('students_bp.student_detail', student_id=student.id))
-        except ValueError:
-            flash('Formato de nota inválido.', 'warning')
-            return redirect(url_for('students_bp.student_detail', student_id=student.id))
+    grades = Grade.query.filter_by(student_id=student_id, subject_id=subject_id).all()
+    # Mapear grades existentes por término ('Nota 1', 'Nota 2', 'Nota 3', 'Nota 4')
+    grades_map = {g.term: g for g in grades if g.term}
 
-    try:
-        g = Grade(student_id=student.id, subject_id=subj.id, score=score_val, comment=comment, term=term)
-        db.session.add(g)
-        db.session.commit()
-        flash('Nota añadida.', 'success')
-        promoted_to = _promote_student_if_ready(student)
-        if promoted_to:
-            flash(f'Estudiante promovido automáticamente a {promoted_to}.', 'success')
-    except Exception as e:
-        db.session.rollback()
-        flash(f'Error al añadir nota: {e}', 'danger')
-    return redirect(url_for('students_bp.student_detail', student_id=student.id))
+    TERMS = ['Nota 1', 'Nota 2', 'Nota 3', 'Nota 4']
 
-
-@teachers_bp.route('/grades/<int:grade_id>/edit', methods=['GET', 'POST'])
-@login_required
-@requires_roles(UserRole.TEACHER, UserRole.ADMIN)
-def edit_grade(grade_id):
-    g = db.session.get(Grade, grade_id)
-    if g is None:
-        abort(404)
     if request.method == 'POST':
-        score = request.form.get('score')
-        comment = request.form.get('comment')
-        term = request.form.get('term')
         try:
-            if score:
-                val = float(score)
-                if val < 0 or val > 20:
-                    flash('La nota debe estar entre 0 y 20.', 'warning')
-                    return render_template('students/grade_form.html', grade=g)
-                g.score = val
-            else:
-                g.score = None
-            g.comment = comment
-            g.term = term
+            with db.session.begin_nested():
+                for term in TERMS:
+                    score_str = request.form.get(f'score_{term}')
+                    comment = request.form.get(f'comment_{term}')
+
+                    score_val = None
+                    if score_str:
+                        try:
+                            score_val = float(score_str)
+                            if score_val < 0 or score_val > 20:
+                                raise ValueError(f"La nota '{term}' debe estar entre 0 y 20.")
+                        except ValueError as ve:
+                            flash(str(ve), "warning")
+                            return redirect(url_for('teachers_bp.edit_4_grades', student_id=student_id, subject_id=subject_id))
+
+                    if term in grades_map:
+                        g = grades_map[term]
+                        g.score = score_val
+                        g.comment = comment
+                    else:
+                        g = Grade(student_id=student.id, subject_id=subj.id, term=term, score=score_val, comment=comment)
+                        db.session.add(g)
+
             db.session.commit()
-            flash('Nota actualizada.', 'success')
-            promoted_to = _promote_student_if_ready(g.student)
+            flash('Notas actualizadas exitosamente.', 'success')
+
+            promoted_to = _promote_student_if_ready(student)
             if promoted_to:
                 flash(f'Estudiante promovido automáticamente a {promoted_to}.', 'success')
+
         except Exception as e:
             db.session.rollback()
-            flash(f'Error actualizando nota: {e}', 'danger')
-        return redirect(url_for('students_bp.student_detail', student_id=g.student_id))
-    return render_template('students/grade_form.html', grade=g)
+            flash(f'Error al actualizar notas: {e}', 'danger')
 
+        return redirect(url_for('students_bp.student_detail', student_id=student.id))
 
-@teachers_bp.route('/grades/<int:grade_id>/delete', methods=['POST'])
-@login_required
-@requires_roles(UserRole.TEACHER, UserRole.ADMIN)
-def delete_grade(grade_id):
-    g = db.session.get(Grade, grade_id)
-    if g is None:
-        abort(404)
-    sid = g.student_id
-    try:
-        db.session.delete(g)
-        db.session.commit()
-        flash('Nota eliminada.', 'info')
-    except Exception as e:
-        db.session.rollback()
-        flash(f'Error eliminando nota: {e}', 'danger')
-    return redirect(url_for('students_bp.student_detail', student_id=sid))
+    return render_template('students/grade_form.html', student=student, subject=subj, grades_map=grades_map, terms=TERMS)
 
 
 @teachers_bp.route('/reports/gradebook')
