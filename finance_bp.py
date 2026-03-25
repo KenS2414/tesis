@@ -169,30 +169,40 @@ def register_payment():
     amount = Decimal(data['monto_pagado'])
     key = data.get('comprobante_key')
     proof_url = None
-    # if file uploaded as 'proof', try upload to S3/MinIO
-    if 'proof' in request.files:
-        f = request.files['proof']
-        if f and f.filename:
-            key_name = f"payments/{inv.id}/{f.filename}"
-            upload_bytes_to_s3(f.read(), key_name, content_type=f.content_type)
-            proof_url = get_presigned_url(key_name)
-    elif key:
-        # treat key as existing object key
-        proof_url = get_presigned_url(key)
     try:
-        with db.session.begin():
-            pay = PaymentRecord(invoice_id=inv.id, monto_pagado=amount, metodo_pago=data['metodo_pago'], comprobante_url=proof_url)
-            db.session.add(pay)
-            # update invoice status
-            total_paid = sum([Decimal(p.monto_pagado) for p in inv.payments]) + amount
-            if total_paid >= Decimal(inv.monto_total):
-                inv.status = InvoiceStatus.PAID
-            # update student account
-            acct = StudentAccount.query.filter_by(student_id=inv.student_id).first()
-            if not acct:
-                acct = StudentAccount(student_id=inv.student_id, balance_total=Decimal('0.00'))
-                db.session.add(acct)
-            acct.balance_total = Decimal(acct.balance_total) - amount
+        pay = PaymentRecord(invoice_id=inv.id, monto_pagado=amount, metodo_pago=data['metodo_pago'])
+        db.session.add(pay)
+
+        # update invoice status
+        total_paid = sum([Decimal(p.monto_pagado) for p in inv.payments]) + amount
+        if total_paid >= Decimal(inv.monto_total):
+            inv.status = InvoiceStatus.PAID
+
+        # update student account
+        acct = StudentAccount.query.filter_by(student_id=inv.student_id).first()
+        if not acct:
+            acct = StudentAccount(student_id=inv.student_id, balance_total=Decimal('0.00'))
+            db.session.add(acct)
+        acct.balance_total = Decimal(acct.balance_total) - amount
+
+        db.session.flush()
+
+        proof_url = None
+        # if file uploaded as 'proof', try upload to S3/MinIO
+        if 'proof' in request.files:
+            f = request.files['proof']
+            if f and f.filename:
+                key_name = f"payments/{inv.id}/{f.filename}"
+                upload_bytes_to_s3(f.read(), key_name, content_type=f.content_type)
+                proof_url = get_presigned_url(key_name)
+        elif key:
+            # treat key as existing object key
+            proof_url = get_presigned_url(key)
+
+        if proof_url:
+            pay.comprobante_url = proof_url
+
+        db.session.commit()
         return jsonify({'status': 'ok', 'payment_id': pay.id})
     except Exception as e:
         db.session.rollback()

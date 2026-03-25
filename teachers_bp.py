@@ -389,38 +389,61 @@ def gradebook_bulk_update(subject_id):
     try:
         # use nested transaction to avoid conflicts with any outer test transactions
         with db.session.begin_nested():
+            student_ids = [it.get('student_id') for it in items if it.get('student_id')]
+
+            # Bulk fetch students
+            students = Student.query.filter(Student.id.in_(student_ids)).all()
+            student_map = {s.id: s for s in students}
+
+            # Bulk fetch grades
+            grades = Grade.query.filter(Grade.student_id.in_(student_ids), Grade.subject_id == subj.id).all()
+
+            # Create a dictionary for quick lookup of existing grades by (student_id, term)
+            grade_map = {}
+            for g in grades:
+                grade_map[(g.student_id, g.term)] = g
+
             updated_student_ids = set()
+            new_grades = []
+
             for it in items:
                 sid = it.get('student_id')
                 score = it.get('score')
                 comment = it.get('comment')
                 term = it.get('term')
+
                 if not sid:
                     raise ValueError('student_id required')
-                student = db.session.get(Student, sid)
-                if student is None:
+
+                if sid not in student_map:
                     raise ValueError(f'student {sid} not found')
-                # find existing grade for same student/subject/term
-                q = Grade.query.filter_by(student_id=sid, subject_id=subj.id)
-                if term:
-                    q = q.filter_by(term=term)
-                g = q.first()
+
                 try:
                     score_val = None if score is None else float(score)
                 except Exception:
                     raise ValueError('invalid score')
+
+                # Check for existing grade
+                g = grade_map.get((sid, term))
+
                 if g:
                     g.score = score_val
                     g.comment = comment
                     g.term = term
                 else:
                     g = Grade(student_id=sid, subject_id=subj.id, score=score_val, comment=comment, term=term)
-                    db.session.add(g)
+                    new_grades.append(g)
+                    # Add to map in case there are duplicates in payload
+                    grade_map[(sid, term)] = g
+
                 updated_student_ids.add(sid)
+
+            if new_grades:
+                db.session.bulk_save_objects(new_grades)
 
         promoted = []
         for sid in updated_student_ids:
-            st = db.session.get(Student, sid)
+            st = student_map.get(sid)
             if st is None:
                 continue
             next_year = _promote_student_if_ready(st)
