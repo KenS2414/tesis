@@ -179,24 +179,29 @@ def student_create():
             subjects_to_assign = Subject.query.filter_by(
                 year_group=current_year_group
             ).all()
-            for subj in subjects_to_assign:
-                grade = Grade(student_id=student.id, subject_id=subj.id, value=None)
-                db.session.add(grade)
-            db.session.commit()
+            grades_to_add = [
+                Grade(student_id=student.id, subject_id=subj.id, value=None)
+                for subj in subjects_to_assign
+            ]
+            if grades_to_add:
+                db.session.bulk_save_objects(grades_to_add)
+                db.session.commit()
         else:
             # Fallback to manually selected subjects (if any)
             selected_subjects = request.form.getlist("subjects")
             if selected_subjects:
+                grades_to_add = []
                 for sid in selected_subjects:
                     try:
                         subject_id = int(sid)
-                        grade = Grade(
-                            student_id=student.id, subject_id=subject_id, value=None
+                        grades_to_add.append(
+                            Grade(student_id=student.id, subject_id=subject_id, value=None)
                         )
-                        db.session.add(grade)
                     except ValueError:
                         continue
-                db.session.commit()
+                if grades_to_add:
+                    db.session.bulk_save_objects(grades_to_add)
+                    db.session.commit()
 
         flash("Estudiante creado.", "success")
         return redirect(url_for("students_bp.list_students"))
