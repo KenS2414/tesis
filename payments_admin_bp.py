@@ -18,13 +18,15 @@ def _is_admin_user():
     )
 
 
+from sqlalchemy.orm import joinedload
+
 @payments_admin_bp.route("/admin/payments")
 @login_required
 def admin_payments():
     if not _is_admin_user():
         flash("Acceso denegado.", "danger")
         return redirect(url_for("main_bp.dashboard"))
-    payments = Payment.query.order_by(Payment.created_at.desc()).all()
+    payments = Payment.query.options(joinedload(Payment.student)).order_by(Payment.created_at.desc()).all()
     if current_app.config.get("S3_BUCKET"):
         for p in payments:
             p.proof_url = (
@@ -73,7 +75,7 @@ def admin_debts():
         return redirect(url_for("main_bp.dashboard"))
     from models import StudentAccount
     # Fetch accounts with balance > 0
-    accounts = StudentAccount.query.filter(StudentAccount.balance_total > 0).all()
+    accounts = StudentAccount.query.options(joinedload(StudentAccount.student)).filter(StudentAccount.balance_total > 0).all()
     return render_template("payments/admin_debts.html", accounts=accounts)
 
 
