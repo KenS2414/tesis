@@ -2,6 +2,27 @@ import io
 from werkzeug.security import generate_password_hash
 
 
+def test_import_students_malformed_dob(super_admin_client, app):
+    from models import Student
+
+    client = super_admin_client
+
+    # Create CSV content with a malformed date
+    csv_content = b"first_name,last_name,email,dob\nJohn,Doe,john.malformed@example.com,invalid-date\n"
+    csv_file = io.BytesIO(csv_content)
+
+    data = {'file': (csv_file, 'students_malformed.csv'), 'type': 'students'}
+    resp = client.post('/students/import', data=data, content_type='multipart/form-data', follow_redirects=True)
+    assert resp.status_code in (200, 302)
+
+    # Verify the student was created but dob is None
+    student = Student.query.filter_by(email='john.malformed@example.com').first()
+    assert student is not None
+    assert student.first_name == 'John'
+    assert student.last_name == 'Doe'
+    assert student.dob is None
+
+
 def test_import_students_and_export(super_admin_client, app):
     from extensions import db
     from models import Student
