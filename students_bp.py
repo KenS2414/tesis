@@ -3,7 +3,7 @@ from flask_login import login_required
 from flask_login import current_user
 from extensions import db
 from models import Student, Subject, Grade, UserRole
-from models import AssessmentCategory, AcademicPeriod
+from models import AssessmentCategory, AcademicPeriod  # AssessmentCategory is used for DB validation
 from utils.auth import requires_roles
 from flask import Response
 from utils.pdf_reports import generate_gradebook_pdf
