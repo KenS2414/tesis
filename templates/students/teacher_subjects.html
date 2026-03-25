@@ -36,9 +36,9 @@
                     </td>
                     <td>
                       {% if g %}
-                        <a href="{{ url_for('students_bp.edit_grade', grade_id=g.id) }}" class="btn btn-sm btn-outline-primary">Editar Nota</a>
+                        <a href="{{ url_for('teachers_bp.edit_grade', grade_id=g.id) }}" class="btn btn-sm btn-outline-primary">Editar Nota</a>
                       {% else %}
-                        <form action="{{ url_for('students_bp.add_grade', student_id=s.id) }}" method="post" class="d-flex align-items-center gap-2">
+                        <form action="{{ url_for('teachers_bp.add_grade', student_id=s.id) }}" method="post" class="d-flex align-items-center gap-2">
                           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                           <input type="hidden" name="subject_id" value="{{ item.subject.id }}">
                           <input type="number" step="0.01" min="0" max="10" name="score" class="form-control form-control-sm w-auto" placeholder="Nota" required>
@@ -56,7 +56,7 @@
             </table>
           </div>
           <div class="mt-2">
-            <a class="btn btn-sm btn-outline-primary me-2" href="{{ url_for('students_bp.subject_report', subject_id=item.subject.id) }}">Ver informe</a>
+            <a class="btn btn-sm btn-outline-primary me-2" href="{{ url_for('teachers_bp.subject_report', subject_id=item.subject.id) }}">Ver informe</a>
             <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('students_bp.subject_detail', subject_id=item.subject.id) }}">Ver materia</a>
           </div>
         </div>

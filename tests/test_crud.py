@@ -88,19 +88,19 @@ def test_subject_crud_and_grade_crud(client):
     client.get('/logout')
     resp = client.post('/login', data={'username': 'teacher2@example.com', 'password': 'teachpass'}, follow_redirects=True)
     assert resp.status_code == 200
-    resp = client.post(f'/students/{student.id}/add-grade', data={'subject_id': subj.id, 'score': '18', 'term': '2026-1'}, follow_redirects=True)
+    resp = client.post(f'/teacher/{student.id}/add-grade', data={'subject_id': subj.id, 'score': '18', 'term': '2026-1'}, follow_redirects=True)
     assert resp.status_code == 200
     grade = Grade.query.filter_by(student_id=student.id).first()
     assert grade is not None
 
     # edit grade
-    resp = client.post(f'/students/grades/{grade.id}/edit', data={'score': '19', 'term': '2026-1'}, follow_redirects=True)
+    resp = client.post(f'/teacher/grades/{grade.id}/edit', data={'score': '19', 'term': '2026-1'}, follow_redirects=True)
     assert resp.status_code == 200
     grade = db.session.get(Grade, grade.id)
     assert float(grade.score) == 19.0
 
     # delete grade
-    resp = client.post(f'/students/grades/{grade.id}/delete', follow_redirects=True)
+    resp = client.post(f'/teacher/grades/{grade.id}/delete', follow_redirects=True)
     assert resp.status_code == 200
     assert db.session.get(Grade, grade.id) is None
 

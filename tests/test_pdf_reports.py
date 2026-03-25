@@ -15,7 +15,7 @@ def test_gradebook_report(super_admin_client, app, sample_subjects, sample_stude
     db.session.commit()
 
     client = super_admin_client
-    resp = client.get(f"/students/reports/gradebook?subject_id={s.id}")
+    resp = client.get(f"/teacher/reports/gradebook?subject_id={s.id}")
     assert resp.status_code == 200
     assert resp.headers.get('Content-Type') == 'application/pdf'
     assert len(resp.data) > 0

@@ -53,7 +53,7 @@ def test_edit_delete_permissions(tmp_path, monkeypatch):
         # Teacher adds a grade (form is on the student detail page)
         client.post("/login", data={"username": "teacher", "password": "pass"})
         csrf = get_csrf_token(client, f"/students/{stu.id}")
-        resp = client.post(f"/students/{stu.id}/add-grade", data={
+        resp = client.post(f"/teacher/{stu.id}/add-grade", data={
             "subject_id": subj.id,
             "score": 8,
             "csrf_token": csrf,
@@ -66,8 +66,8 @@ def test_edit_delete_permissions(tmp_path, monkeypatch):
         # Student should NOT be able to edit the grade
         client.get("/logout")
         client.post("/login", data={"username": "student", "password": "pass"})
-        csrf = get_csrf_token(client, f"/students/grades/{grade.id}/edit")
-        resp = client.post(f"/students/grades/{grade.id}/edit", data={
+        csrf = get_csrf_token(client, f"/teacher/grades/{grade.id}/edit")
+        resp = client.post(f"/teacher/grades/{grade.id}/edit", data={
             "score": 10,
             "csrf_token": csrf,
         }, follow_redirects=True)
@@ -77,8 +77,8 @@ def test_edit_delete_permissions(tmp_path, monkeypatch):
         # Teacher can edit
         client.get("/logout")
         client.post("/login", data={"username": "teacher", "password": "pass"})
-        csrf = get_csrf_token(client, f"/students/grades/{grade.id}/edit")
-        resp = client.post(f"/students/grades/{grade.id}/edit", data={
+        csrf = get_csrf_token(client, f"/teacher/grades/{grade.id}/edit")
+        resp = client.post(f"/teacher/grades/{grade.id}/edit", data={
             "score": 9,
             "csrf_token": csrf,
         }, follow_redirects=True)
@@ -98,7 +98,7 @@ def test_edit_delete_permissions(tmp_path, monkeypatch):
         client.get("/logout")
         client.post("/login", data={"username": "admin", "password": "pass"})
         # remove the grade first so subject can be deleted (FK constraint)
-        resp = client.post(f"/students/grades/{grade.id}/delete", follow_redirects=True)
+        resp = client.post(f"/teacher/grades/{grade.id}/delete", follow_redirects=True)
         assert resp.status_code == 200
         csrf = get_csrf_token(client, f"/students/subjects/{subj.id}/edit")
         resp = client.post(f"/students/subjects/{subj.id}/delete", data={"csrf_token": csrf}, follow_redirects=True)
