@@ -1,6 +1,6 @@
 import boto3
 from flask import current_app
-from botocore.exceptions import BotoCoreError, NoCredentialsError
+from botocore.exceptions import BotoCoreError, ClientError, NoCredentialsError
 
 def upload_bytes_to_s3(bytes_data, key_name, content_type=None):
     bucket = current_app.config.get("S3_BUCKET")
@@ -59,5 +59,9 @@ def check_s3_connection():
     if endpoint:
         client_args["endpoint_url"] = endpoint
     s3 = boto3.client("s3", **client_args)
-    s3.head_bucket(Bucket=bucket)
-    return True
+
+    try:
+        s3.head_bucket(Bucket=bucket)
+        return True
+    except (BotoCoreError, ClientError):
+        return False
