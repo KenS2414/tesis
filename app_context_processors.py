@@ -3,7 +3,18 @@ import os
 from flask import url_for
 
 
+from flask import request
+
 def register_context_processors(app):
+    @app.after_request
+    def add_cache_control(response):
+        # Exclude static files from cache control header overriding
+        if request.endpoint and request.endpoint != "static":
+            response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+            response.headers["Pragma"] = "no-cache"
+            response.headers["Expires"] = "0"
+        return response
+
     @app.context_processor
     def inject_asset_version():
         return {"ASSET_VERSION": app.config.get("ASSET_VERSION", "1")}

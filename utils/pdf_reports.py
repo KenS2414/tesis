@@ -3,40 +3,50 @@ from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
 
 
-def generate_gradebook_pdf(subject, grades):
-    """Return bytes of a simple gradebook PDF for `subject` and iterable `grades`.
-    `grades` should be iterable of (student, grade) tuples where `student` has
-    first_name/last_name and `grade` has score/comment.
+def generate_gradebook_pdf(subject, student_data):
+    """Return bytes of a simple gradebook PDF for `subject` and iterable `student_data`.
+    `student_data` should be iterable of (student, grade list, average) tuples.
     """
     buf = BytesIO()
     c = canvas.Canvas(buf, pagesize=letter)
     width, height = letter
     y = height - 72
     c.setFont("Helvetica-Bold", 16)
-    c.drawString(72, y, f"Gradebook: {subject.name}")
+    c.drawString(72, y, f"Libreta de Notas: {subject.name}")
     y -= 28
     if getattr(subject, 'category', None):
         c.setFont("Helvetica", 10)
-        c.drawString(72, y, f"Category: {subject.category}    Credits: {getattr(subject, 'credits', '')}")
+        c.drawString(72, y, f"Categoría: {subject.category}")
         y -= 20
 
     c.setFont("Helvetica-Bold", 12)
-    c.drawString(72, y, "Student")
-    c.drawString(300, y, "Score")
-    c.drawString(380, y, "Comment")
+    c.drawString(72, y, "Estudiante")
+    c.drawString(300, y, "Nota")
+    c.drawString(380, y, "Comentario")
     y -= 16
     c.setFont("Helvetica", 10)
-    for student, grade in grades:
+    for student, grades, avg in student_data:
+        for grade in grades:
+            if y < 72:
+                c.showPage()
+                y = height - 72
+            name = f"{student.first_name} {student.last_name}"
+            c.drawString(72, y, name)
+            # Use 'value' or 'score'
+            score_val = getattr(grade, 'value', getattr(grade, 'score', None))
+            score = "" if score_val is None else str(score_val)
+            c.drawString(300, y, score)
+            comment = grade.comment or ""
+            c.drawString(380, y, comment[:60])
+            y -= 14
         if y < 72:
             c.showPage()
             y = height - 72
-        name = f"{student.first_name} {student.last_name}"
-        c.drawString(72, y, name)
-        score = "" if grade.score is None else str(grade.score)
-        c.drawString(300, y, score)
-        comment = grade.comment or ""
-        c.drawString(380, y, comment[:60])
-        y -= 14
+        c.setFont("Helvetica-Bold", 10)
+        avg_str = f"{avg:.2f}" if avg is not None else "N/A"
+        c.drawString(72, y, f"Promedio Actual: {avg_str}")
+        c.setFont("Helvetica", 10)
+        y -= 20
 
     c.showPage()
     c.save()

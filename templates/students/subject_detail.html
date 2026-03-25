@@ -12,12 +12,19 @@
       {% if current_user.role in ['teacher', 'admin', 'super_admin'] %}
       <a class="btn btn-outline-primary" href="{{ url_for('teachers_bp.report_gradebook', subject_id=subject.id) }}">Descargar Reporte PDF</a>
       {% endif %}
-      <a class="btn btn-outline-secondary" href="{{ url_for('students_bp.list_subjects') }}">Volver</a>
     </div>
   </div>
 
   {% if current_user.role == 'student' %}
-    <h5>Mis Notas en esta materia</h5>
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h5 class="mb-0">Mis Notas en esta materia</h5>
+        {% set avg = student.weighted_average(subject.id) %}
+        {% if avg is not none %}
+        <span class="badge bg-primary fs-6">Promedio Actual: {{ '%.2f'|format(avg) }}</span>
+        {% else %}
+        <span class="badge bg-secondary fs-6">Promedio Actual: N/A</span>
+        {% endif %}
+    </div>
     <ul class="list-group mb-3">
       {% for g in grades %}
         <li class="list-group-item">{{ g.term or '' }} - {{ g.value or g.score }} {% if g.comment %}- {{ g.comment }}{% endif %}</li>
