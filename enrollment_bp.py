@@ -53,9 +53,9 @@ def register_enrollment():
     if existing:
         return (jsonify({'error': 'student already enrolled in this academic year', 'enrollment_id': existing.id}), 400)
     try:
-        with db.session.begin():
-            en = Enrollment(student_id=student_id, section_id=section_id, academic_year_id=academic_year_id, fecha_inscripcion=date.today(), estado=EnrollmentStatus.ACTIVE)
-            db.session.add(en)
+        en = Enrollment(student_id=student_id, section_id=section_id, academic_year_id=academic_year_id, fecha_inscripcion=date.today(), estado=EnrollmentStatus.ACTIVE)
+        db.session.add(en)
+        db.session.commit()
         return jsonify({'status': 'ok', 'enrollment_id': en.id}), 201
     except Exception as e:
         db.session.rollback()
