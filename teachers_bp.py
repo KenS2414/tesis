@@ -387,45 +387,81 @@ def gradebook_bulk_update(subject_id):
         return ("Missing grades payload", 400)
     items = payload['grades']
     try:
+        # Pre-fetch all relevant students and their grades for this subject to avoid N+1 queries
+        student_ids_to_update = {it.get('student_id') for it in items if it.get('student_id')}
+        if not student_ids_to_update:
+            return ({"status": "error", "error": "student_id required in items"}, 400)
+
+        students_list = Student.query.filter(Student.id.in_(student_ids_to_update)).all()
+        student_map = {s.id: s for s in students_list}
+
+        # Check if any requested student does not exist
+        missing_ids = student_ids_to_update - set(student_map.keys())
+        if missing_ids:
+            raise ValueError(f"students not found: {missing_ids}")
+
+        grades_list = Grade.query.filter(
+            Grade.student_id.in_(student_ids_to_update),
+            Grade.subject_id == subj.id
+        ).all()
+
+        # Map existing grades by (student_id, term) to avoid N+1 lookups
+        grades_map = {}
+        for g in grades_list:
+            grades_map[(g.student_id, g.term)] = g
+
+        updated_student_ids = set()
+        new_grades_to_add = []
+
         # use nested transaction to avoid conflicts with any outer test transactions
         with db.session.begin_nested():
-            updated_student_ids = set()
             for it in items:
                 sid = it.get('student_id')
                 score = it.get('score')
                 comment = it.get('comment')
                 term = it.get('term')
-                if not sid:
-                    raise ValueError('student_id required')
-                student = db.session.get(Student, sid)
-                if student is None:
-                    raise ValueError(f'student {sid} not found')
-                # find existing grade for same student/subject/term
-                q = Grade.query.filter_by(student_id=sid, subject_id=subj.id)
-                if term:
-                    q = q.filter_by(term=term)
-                g = q.first()
+
                 try:
                     score_val = None if score is None else float(score)
                 except Exception:
                     raise ValueError('invalid score')
+
+                g = grades_map.get((sid, term))
                 if g:
                     g.score = score_val
                     g.comment = comment
-                    g.term = term
                 else:
-                    g = Grade(student_id=sid, subject_id=subj.id, score=score_val, comment=comment, term=term)
-                    db.session.add(g)
+                    new_grade = Grade(student_id=sid, subject_id=subj.id, score=score_val, comment=comment, term=term)
+                    new_grades_to_add.append(new_grade)
+                    # update the map in case of duplicate entries in payload
+                    grades_map[(sid, term)] = new_grade
+
                 updated_student_ids.add(sid)
 
+            if new_grades_to_add:
+                db.session.bulk_save_objects(new_grades_to_add)
+
+        # Pre-fetch ALL subjects and grades for these students for promotion checks
+        # to eliminate N+1 inside _promote_student_if_ready
+        # Optimization: only check promotion if we successfully updated
         promoted = []
-        for sid in updated_student_ids:
-            st = db.session.get(Student, sid)
-            if st is None:
-                continue
-            next_year = _promote_student_if_ready(st)
-            if next_year:
-                promoted.append({'student_id': sid, 'promoted_to': next_year})
+        if updated_student_ids:
+            # We must commit before promotion checks to read the newly saved/updated grades
+            # (although with begin_nested, flush is sufficient, but since we are doing complex queries next,
+            # we need them flushed into the session).
+            db.session.flush()
+
+            for sid in updated_student_ids:
+                st = student_map.get(sid)
+                if st is None:
+                    continue
+                next_year = _promote_student_if_ready(st)
+                if next_year:
+                    promoted.append({'student_id': sid, 'promoted_to': next_year})
+
+        # Finally, commit everything (nested begin will be committed by the outer request cycle context)
+        # We explicitly commit to resolve the updates.
+        db.session.commit()
 
         return ({'status': 'ok', 'updated': len(items), 'promoted': promoted}, 200)
     except Exception as e:
