@@ -287,9 +287,13 @@ def teacher_subjects():
         )
 
         # Build student data with their current grade for the subject
+        # Pre-fetch all grades for the subject in one query to avoid N+1 inside loop
+        grades = Grade.query.filter_by(subject_id=s.id).all()
+        grade_by_student_id = {g.student_id: g for g in grades}
+
         student_data = []
         for student in students:
-            grade = Grade.query.filter_by(student_id=student.id, subject_id=s.id).first()
+            grade = grade_by_student_id.get(student.id)
             student_data.append({
                 'student': student,
                 'grade': grade
