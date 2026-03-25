@@ -49,3 +49,75 @@ def test_student_does_not_promote_with_failing_subject(super_admin_client, app):
     st = db.session.get(Student, student.id)
     assert st.current_year_group == '1er Año'
     assert Grade.query.filter_by(student_id=student.id).count() == 2
+
+from teachers_bp import _promote_student_if_ready
+
+def test_unit_promote_student_success(app):
+    with app.app_context():
+        student = Student(first_name='UnitPromo', last_name='Student', email='unitpromo@example.com', current_year_group='1er Año')
+        s1 = Subject(name='Matematica I Unit', code='MAT101U', year_group='1er Año')
+        s2 = Subject(name='Historia I Unit', code='HIS101U', year_group='1er Año')
+        db.session.add_all([student, s1, s2])
+        db.session.commit()
+
+        g1 = Grade(student_id=student.id, subject_id=s1.id, value=15.0)
+        g2 = Grade(student_id=student.id, subject_id=s2.id, value=12.0)
+        db.session.add_all([g1, g2])
+        db.session.commit()
+
+        promoted_to = _promote_student_if_ready(student)
+
+        assert promoted_to == '2do Año'
+        assert student.current_year_group == '2do Año'
+
+def test_unit_promote_student_final_year(app):
+    with app.app_context():
+        student = Student(first_name='FinalYear', last_name='Student', email='finalyear@example.com', current_year_group='5to Año')
+        s1 = Subject(name='Matematica V Unit', code='MAT501U', year_group='5to Año')
+        db.session.add_all([student, s1])
+        db.session.commit()
+
+        g1 = Grade(student_id=student.id, subject_id=s1.id, value=15.0)
+        db.session.add(g1)
+        db.session.commit()
+
+        promoted_to = _promote_student_if_ready(student)
+
+        assert promoted_to is None
+        assert student.current_year_group == '5to Año'
+
+def test_unit_promote_student_failing_grades(app):
+    with app.app_context():
+        student = Student(first_name='Failing', last_name='Student', email='failing@example.com', current_year_group='1er Año')
+        s1 = Subject(name='Matematica I Fail', code='MAT101F', year_group='1er Año')
+        s2 = Subject(name='Historia I Fail', code='HIS101F', year_group='1er Año')
+        db.session.add_all([student, s1, s2])
+        db.session.commit()
+
+        g1 = Grade(student_id=student.id, subject_id=s1.id, value=15.0)
+        g2 = Grade(student_id=student.id, subject_id=s2.id, value=9.0) # Failing grade
+        db.session.add_all([g1, g2])
+        db.session.commit()
+
+        promoted_to = _promote_student_if_ready(student)
+
+        assert promoted_to is None
+        assert student.current_year_group == '1er Año'
+
+def test_unit_promote_student_incomplete_grades(app):
+    with app.app_context():
+        student = Student(first_name='Incomplete', last_name='Student', email='incomplete@example.com', current_year_group='1er Año')
+        s1 = Subject(name='Matematica I Inc', code='MAT101I', year_group='1er Año')
+        s2 = Subject(name='Historia I Inc', code='HIS101I', year_group='1er Año')
+        db.session.add_all([student, s1, s2])
+        db.session.commit()
+
+        g1 = Grade(student_id=student.id, subject_id=s1.id, value=15.0)
+        # s2 is missing a grade
+        db.session.add(g1)
+        db.session.commit()
+
+        promoted_to = _promote_student_if_ready(student)
+
+        assert promoted_to is None
+        assert student.current_year_group == '1er Año'
