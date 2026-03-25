@@ -1,17 +1,8 @@
 import inspect
 from datetime import date, datetime
 
-from flask import (
-    Blueprint,
-    Response,
-    abort,
-    current_app,
-    flash,
-    redirect,
-    render_template,
-    request,
-    url_for,
-)
+from flask import (Blueprint, Response, abort, current_app, flash, redirect,
+                   render_template, request, url_for)
 from flask_login import current_user, login_required
 from marshmallow import Schema, fields
 from werkzeug.security import generate_password_hash
@@ -19,14 +10,9 @@ from werkzeug.utils import secure_filename
 
 from extensions import db
 from models import Attendance, Grade, Student, Subject, User, UserRole
-from scripts.import_export import (
-    export_grades_csv,
-    export_students_csv,
-    export_subjects_csv,
-    import_grades_csv,
-    import_students_csv,
-    import_subjects_csv,
-)
+from scripts.import_export import (export_grades_csv, export_students_csv,
+                                   export_subjects_csv, import_grades_csv,
+                                   import_students_csv, import_subjects_csv)
 from utils.auth import requires_roles
 
 students_bp = Blueprint("students_bp", __name__, url_prefix="/students")
@@ -632,12 +618,57 @@ def subject_detail(subject_id):
         .order_by(Student.last_name, Student.first_name)
         .all()
     )
-    data = []
+
+    # Pre-fetch all grades for this subject to avoid N+1 queries
+    all_grades = Grade.query.filter_by(subject_id=subj.id).all()
+    grades_by_student = {}
+    for g in all_grades:
+        grades_by_student.setdefault(g.student_id, []).append(g)
+
+    # Pre-calculate weighted averages for all students in this subject
+    from models import AssessmentCategory
+
+    rows = (
+        db.session.query(
+            Grade.student_id,
+            AssessmentCategory.id,
+            AssessmentCategory.peso_porcentual,
+            db.func.avg(Grade.value).label("avg_score"),
+        )
+        .join(AssessmentCategory, Grade.assessment_category_id == AssessmentCategory.id)
+        .filter(Grade.subject_id == subj.id)
+        .group_by(
+            Grade.student_id, AssessmentCategory.id, AssessmentCategory.peso_porcentual
+        )
+        .all()
+    )
+
+    student_averages = {}
+    for student_id, cat_id, peso, avg_score in rows:
+        if avg_score is None:
+            continue
+        w = float(peso) if peso is not None else 0.0
+        student_averages.setdefault(
+            student_id, {"total_weight": 0.0, "weighted_sum": 0.0}
+        )
+        student_averages[student_id]["total_weight"] += w
+        student_averages[student_id]["weighted_sum"] += float(avg_score) * w
+
+    averages_map = {}
     for s in students:
-        g = Grade.query.filter_by(student_id=s.id, subject_id=subj.id).all()
-        avg = s.weighted_average(subj.id)
-        data.append({"student": s, "grades": g, "average": avg})
-    return render_template("students/subject_detail.html", subject=subj, data=data)
+        data = student_averages.get(s.id)
+        if data and data["total_weight"] > 0:
+            averages_map[s.id] = data["weighted_sum"] / data["total_weight"]
+        else:
+            averages_map[s.id] = None
+
+    return render_template(
+        "students/subject_detail.html",
+        subject=subj,
+        students=students,
+        grades_map=grades_by_student,
+        averages_map=averages_map,
+    )
 
 
 @students_bp.route("/subjects/<int:subject_id>/delete", methods=["POST"])
