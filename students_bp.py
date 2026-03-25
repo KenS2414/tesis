@@ -71,6 +71,109 @@ def list_students():
     )
 
 
+def _validate_student_form(request, year_group_options):
+    data = {}
+    data["first_name"] = request.form.get("first_name")
+    data["last_name"] = request.form.get("last_name")
+    data["email"] = (request.form.get("email") or "").strip() or None
+    data["login_username"] = (request.form.get("login_username") or "").strip() or None
+    data["login_password"] = request.form.get("login_password") or ""
+    data["current_year_group"] = (
+        request.form.get("current_year_group") or ""
+    ).strip() or None
+    data["cedula"] = (request.form.get("cedula") or "").strip() or None
+    data["section"] = (request.form.get("section") or "").strip() or None
+
+    if (
+        data["current_year_group"]
+        and data["current_year_group"] not in year_group_options
+    ):
+        return None, "Año inválido para el estudiante."
+    if data["login_username"] and not data["login_password"]:
+        return None, "Si defines usuario, debes definir contraseña."
+    if data["login_password"] and not data["login_username"]:
+        return None, "Si defines contraseña, debes definir usuario."
+    if (
+        data["login_username"]
+        and data["email"]
+        and data["login_username"] != data["email"]
+    ):
+        return None, "Para vincular el perfil, Email y Usuario deben coincidir."
+
+    from models import User
+
+    if (
+        data["login_username"]
+        and User.query.filter_by(username=data["login_username"]).first()
+    ):
+        return None, "El usuario de acceso ya existe."
+
+    dob_raw = request.form.get("dob")
+    data["dob"] = None
+    if dob_raw:
+        try:
+            from datetime import datetime
+
+            data["dob"] = datetime.strptime(dob_raw, "%Y-%m-%d").date()
+        except ValueError:
+            return None, "Formato de fecha inválido. Use YYYY-MM-DD."
+
+    return data, None
+
+
+def _create_linked_user(username, password):
+    from werkzeug.security import generate_password_hash
+
+    from models import User, UserRole
+
+    return User(
+        username=username,
+        password_hash=generate_password_hash(password),
+        role=UserRole.STUDENT,
+    )
+
+
+def _upload_student_photo(student, photo):
+    from werkzeug.utils import secure_filename
+
+    from utils.aws import upload_bytes_to_s3
+
+    if photo and photo.filename:
+        filename = secure_filename(photo.filename)
+        key_name = f"students/{student.id}/photo_{filename}"
+        upload_bytes_to_s3(photo.read(), key_name, content_type=photo.content_type)
+        student.photo_filename = key_name
+
+
+def _assign_student_subjects(student, current_year_group, request_form, db):
+    from models import Grade, Subject
+
+    if current_year_group:
+        subjects_to_assign = Subject.query.filter_by(
+            year_group=current_year_group
+        ).all()
+        grades_to_add = [
+            Grade(student_id=student.id, subject_id=subj.id, value=None)
+            for subj in subjects_to_assign
+        ]
+        if grades_to_add:
+            db.session.bulk_save_objects(grades_to_add)
+    else:
+        selected_subjects = request_form.getlist("subjects")
+        if selected_subjects:
+            grades_to_add = []
+            for sid in selected_subjects:
+                try:
+                    subject_id = int(sid)
+                    grades_to_add.append(
+                        Grade(student_id=student.id, subject_id=subject_id, value=None)
+                    )
+                except ValueError:
+                    continue
+            if grades_to_add:
+                db.session.bulk_save_objects(grades_to_add)
+
+
 @students_bp.route("/new", methods=["GET", "POST"])
 @login_required
 @requires_roles(UserRole.SUPER_ADMIN)
@@ -78,133 +181,55 @@ def student_create():
     subjects = Subject.query.order_by(Subject.name).all()
     year_group_options = YEAR_GROUP_OPTIONS
     if request.method == "POST":
-        first_name = request.form.get("first_name")
-        last_name = request.form.get("last_name")
-        email = (request.form.get("email") or "").strip() or None
-        login_username = (request.form.get("login_username") or "").strip() or None
-        login_password = request.form.get("login_password") or ""
-        current_year_group = (
-            request.form.get("current_year_group") or ""
-        ).strip() or None
-        if current_year_group and current_year_group not in year_group_options:
-            flash("Año inválido para el estudiante.", "warning")
+        data, error_msg = _validate_student_form(request, year_group_options)
+        if error_msg:
+            flash(error_msg, "warning")
             return render_template(
                 "students/form.html",
                 student=None,
                 subjects=subjects,
                 year_group_options=year_group_options,
             )
-        if login_username and not login_password:
-            flash("Si defines usuario, debes definir contraseña.", "warning")
-            return render_template(
-                "students/form.html",
-                student=None,
-                subjects=subjects,
-                year_group_options=year_group_options,
+
+        try:
+            student = Student(
+                first_name=data["first_name"],
+                last_name=data["last_name"],
+                email=data["email"],
+                current_year_group=data["current_year_group"],
+                dob=data["dob"],
+                cedula=data["cedula"],
+                section=data["section"],
             )
-        if login_password and not login_username:
-            flash("Si defines contraseña, debes definir usuario.", "warning")
-            return render_template(
-                "students/form.html",
-                student=None,
-                subjects=subjects,
-                year_group_options=year_group_options,
-            )
-        if login_username and email and login_username != email:
-            flash(
-                "Para vincular el perfil, Email y Usuario deben coincidir.", "warning"
-            )
-            return render_template(
-                "students/form.html",
-                student=None,
-                subjects=subjects,
-                year_group_options=year_group_options,
-            )
-        if login_username and User.query.filter_by(username=login_username).first():
-            flash("El usuario de acceso ya existe.", "warning")
-            return render_template(
-                "students/form.html",
-                student=None,
-                subjects=subjects,
-                year_group_options=year_group_options,
-            )
-        dob_raw = request.form.get("dob")
-        dob = None
-        if dob_raw:
-            try:
-                dob = datetime.strptime(dob_raw, "%Y-%m-%d").date()
-            except ValueError:
-                flash("Formato de fecha inválido. Use YYYY-MM-DD.", "warning")
-                return render_template(
-                    "students/form.html",
-                    student=None,
-                    subjects=subjects,
-                    year_group_options=year_group_options,
+            db.session.add(student)
+            db.session.flush()  # flush to get student.id for photo
+
+            photo = request.files.get("photo")
+            _upload_student_photo(student, photo)
+
+            if data["login_username"]:
+                linked_user = _create_linked_user(
+                    data["login_username"], data["login_password"]
                 )
+                db.session.add(linked_user)
 
-        cedula = (request.form.get("cedula") or "").strip() or None
-        section = (request.form.get("section") or "").strip() or None
-
-        student = Student(
-            first_name=first_name,
-            last_name=last_name,
-            email=email,
-            current_year_group=current_year_group,
-            dob=dob,
-            cedula=cedula,
-            section=section,
-        )
-        db.session.add(student)
-        db.session.flush()  # flush to get student.id for photo
-
-        photo = request.files.get("photo")
-        if photo and photo.filename:
-            from utils.aws import upload_bytes_to_s3
-
-            filename = secure_filename(photo.filename)
-            key_name = f"students/{student.id}/photo_{filename}"
-            upload_bytes_to_s3(photo.read(), key_name, content_type=photo.content_type)
-            student.photo_filename = key_name
-        if login_username:
-            linked_user = User(
-                username=login_username,
-                password_hash=generate_password_hash(login_password),
-                role=UserRole.STUDENT,
+            _assign_student_subjects(
+                student, data["current_year_group"], request.form, db
             )
-            db.session.add(linked_user)
-        db.session.commit()
 
-        # Auto-assign subjects based on current_year_group
-        if current_year_group:
-            subjects_to_assign = Subject.query.filter_by(
-                year_group=current_year_group
-            ).all()
-            grades_to_add = [
-                Grade(student_id=student.id, subject_id=subj.id, value=None)
-                for subj in subjects_to_assign
-            ]
-            if grades_to_add:
-                db.session.bulk_save_objects(grades_to_add)
-                db.session.commit()
-        else:
-            # Fallback to manually selected subjects (if any)
-            selected_subjects = request.form.getlist("subjects")
-            if selected_subjects:
-                grades_to_add = []
-                for sid in selected_subjects:
-                    try:
-                        subject_id = int(sid)
-                        grades_to_add.append(
-                            Grade(student_id=student.id, subject_id=subject_id, value=None)
-                        )
-                    except ValueError:
-                        continue
-                if grades_to_add:
-                    db.session.bulk_save_objects(grades_to_add)
-                    db.session.commit()
+            db.session.commit()
+            flash("Estudiante creado.", "success")
+            return redirect(url_for("students_bp.list_students"))
+        except Exception as e:
+            db.session.rollback()
+            flash(f"Error creando estudiante: {e}", "danger")
+            return render_template(
+                "students/form.html",
+                student=None,
+                subjects=subjects,
+                year_group_options=year_group_options,
+            )
 
-        flash("Estudiante creado.", "success")
-        return redirect(url_for("students_bp.list_students"))
     return render_template(
         "students/form.html",
         student=None,
