@@ -204,9 +204,6 @@ def student_create():
             db.session.add(student)
             db.session.flush()  # flush to get student.id for photo
 
-            photo = request.files.get("photo")
-            _upload_student_photo(student, photo)
-
             if data["login_username"]:
                 linked_user = _create_linked_user(
                     data["login_username"], data["login_password"]
@@ -216,6 +213,13 @@ def student_create():
             _assign_student_subjects(
                 student, data["current_year_group"], request.form, db
             )
+
+            # Flush everything so database changes are in place but not committed yet
+            db.session.flush()
+
+            # Upload photo
+            photo = request.files.get("photo")
+            _upload_student_photo(student, photo)
 
             db.session.commit()
             flash("Estudiante creado.", "success")
