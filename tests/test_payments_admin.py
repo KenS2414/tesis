@@ -43,6 +43,8 @@ def test_admin_payment_reject_success(admin_client, app):
     # Verification
     assert response.status_code == 200
     assert b"Pago rechazado." in response.data
+    # Verify the flash message category (category info)
+    assert b'class="flash info"' in response.data
 
     with app.app_context():
         updated_payment = db.session.get(Payment, payment_id)
