@@ -101,6 +101,28 @@
     {% endif %}
 
     {% if user.role == 'student' %}
+    <!-- Perfil Card (Student) -->
+    <div class="col-md-6 col-lg-4">
+        <div class="card h-100 border-0 shadow-sm hover-card">
+            <div class="card-body text-center p-4">
+                <div class="mb-3 text-secondary">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                        <circle cx="12" cy="7" r="4"></circle>
+                    </svg>
+                </div>
+                <h3 class="h5 card-title">Mi Perfil</h3>
+                <p class="card-text text-muted small">Edita tus datos personales.</p>
+                {% set student = user.get_student() %}
+                {% if student %}
+                <a href="{{ url_for('students_bp.student_edit', student_id=student.id) }}" class="btn btn-primary w-100 mt-2">Editar Perfil</a>
+                {% else %}
+                <button disabled class="btn btn-secondary w-100 mt-2">Perfil no vinculado</button>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
     <!-- Materias Card (Student) -->
     <div class="col-md-6 col-lg-4">
         <div class="card h-100 border-0 shadow-sm hover-card">

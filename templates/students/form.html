@@ -14,10 +14,6 @@
       <label for="last_name" class="form-label">Apellido</label>
       <input id="last_name" name="last_name" value="{{ student.last_name if student else '' }}" class="form-control" required />
     </div>
-    <div class="col-md-6">
-      <label for="email" class="form-label">Email</label>
-      <input id="email" name="email" value="{{ student.email if student else '' }}" class="form-control" {% if current_user.role == 'student' %}readonly{% endif %} />
-    </div>
 
     {% if not student %}
     <div class="col-12">
@@ -58,7 +54,7 @@
     </div>
     <div class="col-md-6">
       <label for="cedula" class="form-label">Cédula</label>
-      <input id="cedula" name="cedula" value="{{ student.cedula if student and student.cedula else '' }}" class="form-control" maxlength="8" pattern="\d*" title="Debe contener solo números (hasta 8 dígitos)" {% if current_user.role == 'student' %}readonly{% endif %} />
+      <input id="cedula" name="cedula" value="{{ student.cedula if student and student.cedula else '' }}" class="form-control" placeholder="Ej: 12345678" maxlength="8" pattern="[0-9]*" title="Debe contener solo números (hasta 8 dígitos)" {% if current_user.role == 'student' %}readonly{% endif %} />
     </div>
     <div class="col-md-6">
       <label for="section" class="form-label">Sección</label>

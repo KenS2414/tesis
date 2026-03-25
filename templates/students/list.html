@@ -33,27 +33,28 @@
   <div class="table-responsive">
     <table class="table table-striped align-middle">
       <thead>
-        <tr><th>ID</th><th>Nombre</th><th>Email</th><th>Acciones</th></tr>
+        <tr><th>Nombre</th><th>Usuario</th><th>Acciones</th></tr>
       </thead>
       <tbody>
         {% for s in students %}
           <tr>
-            <td>{{ s.id }}</td>
             <td>{{ s.first_name }} {{ s.last_name }}</td>
             <td>{{ s.email or '' }}</td>
             <td>
-              <a class="btn btn-sm btn-outline-info" href="{{ url_for('students_bp.student_detail', student_id=s.id) }}">Ver</a>
-              {% if current_user.is_authenticated and current_user.role == 'super_admin' %}
-              <a class="btn btn-sm btn-outline-primary ms-2" href="{{ url_for('students_bp.student_edit', student_id=s.id) }}">Editar</a>
-              <form method="post" action="{{ url_for('students_bp.student_delete', student_id=s.id) }}" class="d-inline ms-2">
-                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
-                <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Eliminar estudiante?')">Eliminar</button>
-              </form>
-              {% endif %}
+              <div class="d-flex gap-2 align-items-center">
+                <a class="btn btn-sm btn-outline-info" href="{{ url_for('students_bp.student_detail', student_id=s.id) }}">Ver</a>
+                {% if current_user.is_authenticated and current_user.role == 'super_admin' %}
+                <a class="btn btn-sm btn-outline-primary" href="{{ url_for('students_bp.student_edit', student_id=s.id) }}">Editar</a>
+                <form method="post" action="{{ url_for('students_bp.student_delete', student_id=s.id) }}" class="m-0">
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+                  <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Eliminar estudiante?')">Eliminar</button>
+                </form>
+                {% endif %}
+              </div>
             </td>
           </tr>
         {% else %}
-          <tr><td colspan="4">No hay estudiantes.</td></tr>
+          <tr><td colspan="3">No hay estudiantes.</td></tr>
         {% endfor %}
       </tbody>
     </table>

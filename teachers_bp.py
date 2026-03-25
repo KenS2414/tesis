@@ -194,10 +194,22 @@ def report_gradebook():
     if subj is None:
         abort(404)
     grades = Grade.query.filter_by(subject_id=subj.id).join(Student).order_by(Student.last_name, Student.first_name).all()
-    # prepare tuples of (student, grade)
-    rows = [(g.student, g) for g in grades]
+
+    # prepare dictionary mapping student -> (student, grade list, average)
+    from collections import defaultdict
+    student_grades = defaultdict(list)
+    for g in grades:
+        student_grades[g.student].append(g)
+
+    rows = []
+    for student, s_grades in student_grades.items():
+        avg = student.weighted_average(subj.id)
+        rows.append((student, s_grades, avg))
+
     pdf_bytes = generate_gradebook_pdf(subj, rows)
-    return Response(pdf_bytes, mimetype='application/pdf', headers={"Content-Disposition": f"attachment; filename=gradebook_{subj.id}.pdf"})
+    from datetime import date
+    filename = f"Notas de {subj.name} {date.today()}.pdf"
+    return Response(pdf_bytes, mimetype='application/pdf', headers={"Content-Disposition": f"attachment; filename=\"{filename}\""})
 
 
 @teachers_bp.route('/grades', methods=['POST'])

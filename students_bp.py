@@ -699,7 +699,7 @@ def set_user_role(user_id):
 @login_required
 @requires_roles(UserRole.SUPER_ADMIN)
 def list_users():
-    users = User.query.order_by(User.username).all()
+    users = User.query.filter(User.role != UserRole.STUDENT).order_by(User.username).all()
     return render_template("students/users_list.html", users=users)
 
 

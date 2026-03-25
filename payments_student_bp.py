@@ -15,7 +15,7 @@ from flask_login import current_user, login_required
 from werkzeug.utils import secure_filename
 
 from extensions import db
-from models import Payment, Student, UserRole
+from models import Payment, Student, UserRole, Invoice
 from utils.auth import requires_roles
 from utils.aws import get_presigned_url, upload_bytes_to_s3
 
@@ -107,10 +107,16 @@ def payments_list():
     if not student:
         # no linked student record; show empty
         payments = []
+        invoices = []
     else:
         payments = (
             Payment.query.filter_by(student_id=student.id)
             .order_by(Payment.created_at.desc())
+            .all()
+        )
+        invoices = (
+            Invoice.query.filter_by(student_id=student.id)
+            .order_by(Invoice.fecha_emision.desc())
             .all()
         )
     # If uploads are stored on S3, generate presigned URLs for display
@@ -121,7 +127,7 @@ def payments_list():
                 if getattr(p, "proof_filename", None)
                 else None
             )
-    return render_template("payments/list.html", payments=payments)
+    return render_template("payments/list.html", payments=payments, invoices=invoices)
 
 
 @payments_student_bp.route("/payments/new", methods=["GET", "POST"])

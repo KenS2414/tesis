@@ -3,6 +3,40 @@
 {% block title %}Mis Pagos{% endblock %}
 {% block content %}
   <div class="d-flex justify-content-between align-items-center mb-3">
+    <h1 class="h4">Mis Deudas</h1>
+  </div>
+  <div class="table-responsive mb-5">
+    <table class="table table-striped align-middle">
+      <thead>
+        <tr><th>ID</th><th>Monto Total</th><th>Estado</th><th>Fecha Emisión</th><th>Fecha Vencimiento</th></tr>
+      </thead>
+      <tbody>
+        {% for inv in invoices %}
+          <tr>
+            <td>{{ inv.id }}</td>
+            <td>{{ '%.2f'|format(inv.monto_total) }}</td>
+            <td>
+              {% if inv.status.name == 'PENDING' %}
+                <span class="badge bg-warning text-dark">Pendiente</span>
+              {% elif inv.status.name == 'PAID' %}
+                <span class="badge bg-success">Pagado</span>
+              {% elif inv.status.name == 'OVERDUE' %}
+                <span class="badge bg-danger">Vencido</span>
+              {% else %}
+                <span class="badge bg-secondary">{{ inv.status.name }}</span>
+              {% endif %}
+            </td>
+            <td>{{ inv.fecha_emision }}</td>
+            <td>{{ inv.fecha_vencimiento or '-' }}</td>
+          </tr>
+        {% else %}
+          <tr><td colspan="5">No hay deudas pendientes.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <div class="d-flex justify-content-between align-items-center mb-3">
     <h1 class="h4">Mis Pagos</h1>
     <a class="btn btn-success" href="{{ url_for('payments_student_bp.payment_create') }}">Enviar nuevo pago</a>
   </div>
